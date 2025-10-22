@@ -1,0 +1,5 @@
+{
+  "name": "Marketplace Admin Dashboard",
+  "description": "A comprehensive web-based Admin Panel for a marketplace with three roles (CLIENT, MERCHANT, ADMIN). It allows for auditing merchants, orders, products, and tip payments with role-based access control.",
+  "requestFramePermissions": []
+}
