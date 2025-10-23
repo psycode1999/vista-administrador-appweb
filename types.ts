@@ -1,79 +1,22 @@
-// Fix: Populated types.ts with all necessary type definitions for the application.
 export enum Role {
-  ADMIN = 'Administrador',
+    ADMIN = 'Administrador',
+    MERCHANT = 'Comercio',
+    CUSTOMER = 'Cliente',
 }
 
 export interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: Role;
-  avatarUrl: string;
+    id: string;
+    name: string;
+    email: string;
+    role: Role;
+    avatarUrl: string;
 }
 
 export interface Notification {
-  id: string;
-  message: string;
-  timestamp: string;
-  read: boolean;
-}
-
-export interface DashboardStats {
-  totalRevenue: number;
-  ordersToday: number;
-  newCustomers: number;
-  totalAmountDue: number;
-}
-
-export enum OrderStatus {
-  PENDING = 'Pendiente',
-  PROCESSING = 'Procesando',
-  SHIPPED = 'Enviado',
-  DELIVERED = 'Entregado',
-  CANCELLED = 'Cancelado',
-}
-
-export interface Order {
-  id: string;
-  customerName: string;
-  merchantName: string;
-  date: string;
-  total: number;
-  status: OrderStatus;
-}
-
-export interface Product {
-  id: string;
-  name: string;
-  merchantName: string;
-  category: string;
-  price: number;
-  stock: number;
-}
-
-export interface TipPayment {
-  id: string;
-  orderId: string;
-  customerName: string;
-  merchantName: string;
-  date: string;
-  amount: number;
-}
-
-export interface AuditLog {
     id: string;
+    message: string;
     timestamp: string;
-    user: string;
-    action: string;
-    details: string;
-}
-
-// -- Merchant Specific Types --
-
-export enum TipsStatus {
-    PAID = 'Pagado',
-    PENDING = 'Pendiente',
-    OVERDUE = 'Vencido',
+    read: boolean;
 }
 
 export enum AccountStatus {
@@ -81,24 +24,30 @@ export enum AccountStatus {
     SUSPENDED = 'Suspendida',
 }
 
-export enum ActivityStatus {
-    ONLINE = 'Online',
-    OFFLINE = 'Offline'
+export enum TipsStatus {
+    PAID = 'Pagado',
+    PENDING = 'Pendiente',
 }
 
-// For the main merchant list view
 export interface Merchant {
     id: string;
     name: string;
+    address: string;
+    lat: number;
+    lng: number;
     tipPerTransaction: number;
-    lastPaymentDate: string;
+    lastPaymentDate: string; // "YYYY-MM-DD"
     tipsStatus: TipsStatus;
-    amountDue: number;
     daysDue: number;
+    amountDue: number;
     accountStatus: AccountStatus;
 }
 
-// For the detailed merchant profile panel
+export enum ActivityStatus {
+    ONLINE = 'En línea',
+    OFFLINE = 'Desconectado',
+}
+
 export interface MerchantProfile {
     id: string;
     accountName: string;
@@ -106,19 +55,147 @@ export interface MerchantProfile {
     address: string;
     tipPerTransaction: number;
     sellerName: string;
-    creationDate: string;
+    creationDate: string; // ISO date string
     activity: ActivityStatus;
-    lastConnection: string;
+    lastConnection: string; // ISO date string
     accountStatus: AccountStatus;
 }
 
 export interface TipBalance {
     id: string;
+    totalTipsReceived: number;
+    totalTipsPaid: number;
+    previousBalance: number | null;
+    currentBalance: number;
+    lastPaymentAmount: number | null;
+    lastPaymentDate: string; // ISO date string
+    status: AccountStatus;
+}
+
+export enum OrderStatus {
+    PENDING = 'Pendiente',
+    PROCESSING = 'Preparando',
+    SHIPPED = 'Enviado',
+    DELIVERED = 'Entregado',
+    CANCELLED = 'Cancelado',
+}
+
+export interface OrderProduct {
+    id: string;
+    name: string;
+    price: number;
+    quantity: number;
+}
+
+export interface Order {
+    id: string;
     merchantId: string;
-    income: number;
-    outcome: number;
+    customerName: string;
+    customerAddress: string;
+    location: string;
+    date: string; // "YYYY-MM-DD"
+    status: OrderStatus;
+    products: OrderProduct[];
+    merchantTip: number;
+    platformTip: number;
+    method: string;
+}
+
+export interface MerchantOrderSummary {
+    merchantId: string;
+    merchantName: string;
+    ordersToday: number;
+    totalRevenue: number;
+    expectedRevenue: number;
+}
+
+export interface OrderFilterOptions {
+    products: string[];
+    locations: string[];
+}
+
+export interface MerchantSummaryFilters {
+    date: string;
+    product: string;
+    location: string;
+    status: OrderStatus | '';
+}
+
+
+export enum ProductCategory {
+    COFFEE = 'Café',
+    BOOKS = 'Libros',
+    CLOTHING = 'Ropa',
+    ELECTRONICS = 'Electrónica',
+    GROCERIES = 'Abarrotes',
+    GOURMET = 'Gourmet',
+}
+
+export interface Product {
+    id: string;
+    name: string;
+    brand: string;
+    merchantName: string;
+    category: ProductCategory;
+    price: number;
+    stock: number;
+}
+
+export interface TipPayment {
+    id: string;
+    orderId: string;
+    customerName: string;
+    merchantName: string;
+    date: string; // ISO date string
+    amount: number;
+}
+
+export interface AuditLog {
+    id: string;
+    timestamp: string; // ISO date string
+    user: string;
+    action: string;
+    details: string;
+}
+
+export enum ReceiptStatus {
+    GENERATED = 'Generado',
+}
+
+export interface Receipt {
+    id: string;
+    merchantId: string;
+    merchantName: string;
+    pendingBalance: number;
+    amountReceived: number;
     difference: number;
-    newBalance: number;
-    status: 'Al día' | 'Pendiente';
-    lastPaymentDate: string;
+    createdBy: string;
+    date: string; // ISO date string
+    status: ReceiptStatus;
+}
+
+export interface DashboardStat {
+    value: string;
+    change?: string;
+    changeType?: 'increase' | 'decrease';
+    absoluteChange?: string;
+}
+
+export interface DashboardStats {
+    currentRevenue: DashboardStat;
+    ordersToday: DashboardStat;
+    newCustomers: DashboardStat;
+    totalThisMonth: DashboardStat;
+    totalDue: DashboardStat;
+}
+
+export type DashboardMetricKey = keyof DashboardStats;
+
+export interface HistoricalDataPoint {
+    date: string;
+    value: number;
+}
+
+export interface HistoricalChartData {
+    [key: string]: HistoricalDataPoint[];
 }

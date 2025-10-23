@@ -1,6 +1,7 @@
-import React from 'react';
-import { MerchantProfile, ActivityStatus, AccountStatus } from '../../types';
+import React, { useState } from 'react';
+import { MerchantProfile, ActivityStatus, AccountStatus, TipBalance } from '../../types';
 import Badge from '../ui/Badge';
+import GenerateReceiptModal from '../modals/GenerateReceiptModal';
 
 const DetailRow = ({ label, value, children }: { label: string; value?: string | number; children?: React.ReactNode }) => (
     <div>
@@ -11,9 +12,18 @@ const DetailRow = ({ label, value, children }: { label: string; value?: string |
 
 interface AccountTabProps {
     profile: MerchantProfile;
+    balance: TipBalance | null;
+    onBalanceUpdate: () => void;
 }
 
-const AccountTab: React.FC<AccountTabProps> = ({ profile }) => {
+const AccountTab: React.FC<AccountTabProps> = ({ profile, balance, onBalanceUpdate }) => {
+    const [isModalOpen, setIsModalOpen] = useState(false);
+
+    const handleSuccess = () => {
+        setIsModalOpen(false);
+        onBalanceUpdate();
+    };
+
     return (
         <div className="py-4 space-y-5">
            <DetailRow label="Nombre de la cuenta" value={profile.accountName} />
@@ -29,6 +39,25 @@ const AccountTab: React.FC<AccountTabProps> = ({ profile }) => {
            <DetailRow label="Estado de la cuenta">
                 <Badge color={profile.accountStatus === AccountStatus.ACTIVE ? 'green' : 'red'}>{profile.accountStatus}</Badge>
            </DetailRow>
+            <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                <button 
+                    onClick={() => setIsModalOpen(true)}
+                    disabled={!balance || balance.currentBalance <= 0}
+                    className="w-full px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    Generar Recibo
+                </button>
+           </div>
+            
+            {profile && balance && (
+              <GenerateReceiptModal
+                  isOpen={isModalOpen}
+                  onClose={() => setIsModalOpen(false)}
+                  onSuccess={handleSuccess}
+                  profile={profile}
+                  tipBalance={balance}
+              />
+            )}
         </div>
     );
 };

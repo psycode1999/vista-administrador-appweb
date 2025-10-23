@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { TipBalance } from '../../types';
+import { TipBalance, AccountStatus } from '../../types';
 import { api } from '../../services/api';
 import Table from '../ui/Table';
 import Badge from '../ui/Badge';
@@ -37,7 +37,7 @@ const TipsTab: React.FC<TipsTabProps> = ({ merchantId, profile }) => {
         fetchBalance(); 
     };
 
-    const headers = ['Ingresos', 'Egresos', 'Faltantes/Sobrantes', 'Nuevo Saldo', 'Estado', 'Último Pago'];
+    const headers = ['Total propinas recibidas', 'Propinas totales pagadas', 'Último Saldo', 'Saldo actual', 'Último Pago', 'Fecha pago', 'Estado'];
 
     return (
         <div className="py-4">
@@ -54,18 +54,34 @@ const TipsTab: React.FC<TipsTabProps> = ({ merchantId, profile }) => {
                 headers={headers}
                 data={balance ? [balance] : []}
                 isLoading={isLoading}
-                renderRow={(item: TipBalance) => (
-                    <tr key={item.id}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600">${item.income.toFixed(2)}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-red-600">${item.outcome.toFixed(2)}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">${item.difference.toFixed(2)}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900 dark:text-white">${item.newBalance.toFixed(2)}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">
-                            <Badge color={item.status === 'Al día' ? 'green' : 'yellow'}>{item.status}</Badge>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{new Date(item.lastPaymentDate).toLocaleDateString('es-ES')}</td>
-                    </tr>
-                )}
+                renderRow={(item: TipBalance) => {
+                    const displayedDifference = (item.previousBalance !== null && item.lastPaymentAmount !== null) 
+                        ? item.previousBalance - item.lastPaymentAmount 
+                        : null;
+                    
+                    return (
+                        <tr key={item.id}>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">${item.totalTipsReceived.toFixed(2)}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">${item.totalTipsPaid.toFixed(2)}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">${(item.previousBalance ?? 0).toFixed(2)}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900 dark:text-white">
+                               <div>${item.currentBalance.toFixed(2)}</div>
+                                {displayedDifference !== null && (
+                                    displayedDifference > 0 ? (
+                                        <div className="text-xs text-green-500 font-medium">+ ${displayedDifference.toFixed(2)}</div>
+                                    ) : displayedDifference < 0 ? (
+                                        <div className="text-xs text-red-500 font-medium">- ${Math.abs(displayedDifference).toFixed(2)}</div>
+                                    ) : null
+                                )}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">${(item.lastPaymentAmount ?? 0).toFixed(2)}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{new Date(item.lastPaymentDate).toLocaleString('es-ES')}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                               <Badge color={item.status === AccountStatus.ACTIVE ? 'green' : 'red'}>{item.status}</Badge>
+                            </td>
+                        </tr>
+                    );
+                }}
             />
             
             {profile && balance && (

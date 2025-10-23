@@ -10,6 +10,7 @@ import ProductsView from './views/ProductsView';
 import TipsView from './views/TipsView';
 import AuditView from './views/AuditView';
 import SettingsView from './views/SettingsView';
+import ReceiptsView from './views/ReceiptsView';
 
 const App = () => {
   return (
@@ -40,6 +41,8 @@ const Main = () => {
         return <ProductsView />;
       case 'Tips':
         return <TipsView />;
+      case 'Receipts':
+        return <ReceiptsView />;
       case 'Audit':
         return <AuditView />;
       case 'Settings':

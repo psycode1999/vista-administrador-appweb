@@ -16,7 +16,7 @@ const GenerateReceiptModal: React.FC<GenerateReceiptModalProps> = ({ isOpen, onC
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState('');
 
-    const pendingBalance = tipBalance?.newBalance ?? 0;
+    const pendingBalance = tipBalance?.currentBalance ?? 0;
 
     useEffect(() => {
         const received = parseFloat(amountReceived);
@@ -78,6 +78,21 @@ const GenerateReceiptModal: React.FC<GenerateReceiptModalProps> = ({ isOpen, onC
                             <label className="block text-sm font-medium text-gray-500 dark:text-gray-400">B: Saldo de propinas pendientes</label>
                             <input type="text" readOnly value={`$${pendingBalance.toFixed(2)}`} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm bg-gray-100 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300 cursor-not-allowed" />
                         </div>
+
+                        {parseFloat(amountReceived) > 0 && (
+                            <div className="text-center py-1">
+                                {difference < 0 ? (
+                                    <p className="text-lg font-bold text-green-500">
+                                        + ${Math.abs(difference).toFixed(2)}
+                                    </p>
+                                ) : difference > 0 ? (
+                                    <p className="text-lg font-bold text-red-500">
+                                        - ${difference.toFixed(2)}
+                                    </p>
+                                ) : null}
+                            </div>
+                        )}
+                        
                         <div>
                             <label className="block text-sm font-medium text-gray-500 dark:text-gray-400">D: Fecha de creación</label>
                             <input type="text" readOnly value={new Date().toLocaleString('es-ES')} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm bg-gray-100 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300 cursor-not-allowed" />
@@ -101,7 +116,7 @@ const GenerateReceiptModal: React.FC<GenerateReceiptModalProps> = ({ isOpen, onC
                                 type="text" 
                                 readOnly 
                                 value={`$${difference.toFixed(2)}`} 
-                                className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm bg-gray-100 dark:bg-gray-700 dark:border-gray-600 cursor-not-allowed font-bold ${difference > 0 ? 'text-red-500' : 'text-green-500'}`}
+                                className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm bg-gray-100 dark:bg-gray-700 dark:border-gray-600 cursor-not-allowed font-bold ${difference > 0 ? 'text-red-500' : difference < 0 ? 'text-green-500' : 'text-gray-500'}`}
                             />
                         </div>
                         {error && <p className="text-sm text-red-500">{error}</p>}

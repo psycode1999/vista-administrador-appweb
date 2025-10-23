@@ -1,40 +1,53 @@
 // Fix: Created MerchantDetailPanel component.
 import React, { useEffect, useState } from 'react';
-import { MerchantProfile } from '../../types';
+import { MerchantProfile, TipBalance } from '../../types';
 import { api } from '../../services/api';
 import Card from '../ui/Card';
 import AccountTab from '../tabs/AccountTab';
-import TipsTab from '../tabs/TipsTab';
 
 interface MerchantDetailPanelProps {
   merchantId: string | null;
   onClose: () => void;
+  onDataUpdated: () => void;
 }
 
-const MerchantDetailPanel: React.FC<MerchantDetailPanelProps> = ({ merchantId, onClose }) => {
+const MerchantDetailPanel: React.FC<MerchantDetailPanelProps> = ({ merchantId, onClose, onDataUpdated }) => {
     const [profile, setProfile] = useState<MerchantProfile | null>(null);
+    const [balance, setBalance] = useState<TipBalance | null>(null);
     const [isLoading, setIsLoading] = useState(false);
-    const [activeTab, setActiveTab] = useState('cuenta');
+
+    const fetchDetails = async () => {
+        if (!merchantId) return;
+        setIsLoading(true);
+        setProfile(null);
+        setBalance(null);
+        try {
+            const [profileData, balanceData] = await Promise.all([
+                api.getMerchantProfile(merchantId),
+                api.getTipBalance(merchantId),
+            ]);
+            setProfile(profileData);
+            setBalance(balanceData ?? null);
+        } catch (error) {
+            console.error("Failed to fetch merchant details", error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     useEffect(() => {
         if (merchantId) {
-            const fetchProfile = async () => {
-                setIsLoading(true);
-                setProfile(null);
-                try {
-                    const data = await api.getMerchantProfile(merchantId);
-                    setProfile(data);
-                } catch (error) {
-                    console.error("Failed to fetch merchant profile", error);
-                } finally {
-                    setIsLoading(false);
-                }
-            };
-            fetchProfile();
+            fetchDetails();
         } else {
             setProfile(null);
+            setBalance(null);
         }
     }, [merchantId]);
+
+    const handleSuccessfulPayment = () => {
+        fetchDetails(); // Refresh this panel's data
+        onDataUpdated(); // Refresh the main merchants grid
+    }
 
   if (!merchantId) {
     return (
@@ -56,7 +69,7 @@ const MerchantDetailPanel: React.FC<MerchantDetailPanelProps> = ({ merchantId, o
                     className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
                     aria-label="Cerrar panel de detalles"
                 >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
                 </button>
@@ -70,27 +83,8 @@ const MerchantDetailPanel: React.FC<MerchantDetailPanelProps> = ({ merchantId, o
             
             {!isLoading && profile && (
                  <div className="mt-6 flex-grow flex flex-col">
-                    <ul className="flex border-b border-gray-200 dark:border-gray-700">
-                        <li className="-mb-px mr-1">
-                            <button 
-                                onClick={() => setActiveTab('cuenta')}
-                                className={`inline-block border-l border-t border-r rounded-t py-2 px-4 font-semibold ${activeTab === 'cuenta' ? 'bg-white dark:bg-gray-800 text-primary-700 dark:text-white' : 'text-gray-500 hover:text-primary-700 dark:hover:text-white bg-gray-50 dark:bg-gray-800/50'}`}
-                            >
-                                Cuenta
-                            </button>
-                        </li>
-                         <li className="mr-1">
-                            <button 
-                                onClick={() => setActiveTab('propinas')}
-                                className={`inline-block py-2 px-4 font-semibold ${activeTab === 'propinas' ? 'bg-white dark:bg-gray-800 text-primary-700 dark:text-white border-l border-t border-r rounded-t' : 'text-gray-500 hover:text-primary-700 dark:hover:text-white bg-gray-50 dark:bg-gray-800/50'}`}
-                            >
-                                Propinas
-                            </button>
-                        </li>
-                    </ul>
                     <div className="flex-grow">
-                        {activeTab === 'cuenta' && <AccountTab profile={profile} />}
-                        {activeTab === 'propinas' && <TipsTab merchantId={profile.id} profile={profile} />}
+                        <AccountTab profile={profile} balance={balance} onBalanceUpdate={handleSuccessfulPayment} />
                     </div>
                  </div>
             )}
