@@ -5,7 +5,12 @@ import Table from '../components/ui/Table';
 import MerchantOrdersPanel from '../components/panels/MerchantOrdersPanel';
 import OrderDetailPanel from '../components/panels/OrderDetailPanel';
 
-const OrdersView: React.FC = () => {
+interface OrdersViewProps {
+    contextId: string | null;
+    setContextId: (id: string | null) => void;
+}
+
+const OrdersView: React.FC<OrdersViewProps> = ({ contextId, setContextId }) => {
     const [summaries, setSummaries] = useState<MerchantOrderSummary[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [selectedMerchant, setSelectedMerchant] = useState<MerchantOrderSummary | null>(null);
@@ -51,6 +56,16 @@ const OrdersView: React.FC = () => {
             clearTimeout(handler);
         };
     }, [filters]);
+
+    useEffect(() => {
+        if (contextId && summaries.length > 0) {
+            const summaryToSelect = summaries.find(s => s.merchantId === contextId);
+            if (summaryToSelect) {
+                setSelectedMerchant(summaryToSelect);
+            }
+            setContextId(null); // Clear context
+        }
+    }, [contextId, setContextId, summaries]);
 
     const handleFilterChange = (filterName: keyof MerchantSummaryFilters, value: string) => {
         setFilters(prev => ({ ...prev, [filterName]: value }));

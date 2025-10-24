@@ -5,6 +5,7 @@ interface AuthContextType {
   user: User | null;
   login: (role: Role) => void;
   logout: () => void;
+  updateUser: (updatedInfo: Partial<Pick<User, 'name' | 'avatarUrl'>>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -17,18 +18,19 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
   const [user, setUser] = useState<User | null>(() => {
     try {
       const storedUser = localStorage.getItem(LOCAL_STORAGE_KEY);
-      return storedUser ? JSON.parse(storedUser) : null;
+      return storedUser ? JSON.parse(storedUser) : adminUser; // Start with default admin if none is stored
     } catch (error) {
       console.error("Failed to parse user from localStorage", error);
-      return null;
+      return adminUser;
     }
   });
 
   const login = (role: Role) => {
     // Only allow Admin login for this dashboard
     if (role === Role.ADMIN) {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(adminUser));
-      setUser(adminUser);
+      const initialUser = { ...adminUser };
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(initialUser));
+      setUser(initialUser);
     }
   };
 
@@ -36,9 +38,18 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     localStorage.removeItem(LOCAL_STORAGE_KEY);
     setUser(null);
   };
+  
+  const updateUser = (updatedInfo: Partial<Pick<User, 'name' | 'avatarUrl'>>) => {
+      setUser(currentUser => {
+          if (!currentUser) return null;
+          const newUser = { ...currentUser, ...updatedInfo };
+          localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(newUser));
+          return newUser;
+      });
+  };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout }}>
+    <AuthContext.Provider value={{ user, login, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

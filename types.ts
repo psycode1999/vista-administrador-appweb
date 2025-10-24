@@ -17,6 +17,10 @@ export interface Notification {
     message: string;
     timestamp: string;
     read: boolean;
+    linkTo?: {
+        view: string;
+        targetId: string;
+    };
 }
 
 export enum AccountStatus {
@@ -198,4 +202,56 @@ export interface HistoricalDataPoint {
 
 export interface HistoricalChartData {
     [key: string]: HistoricalDataPoint[];
+}
+
+export enum MessageStatus {
+    SENT = 'Enviado',
+    DELIVERED = 'Recibido',
+    READ = 'Visto',
+}
+
+export interface Message {
+    id: string;
+    conversationId: string;
+    sender: 'admin' | 'user';
+    text: string;
+    timestamp: string; // ISO date string
+    status: MessageStatus;
+}
+
+export interface Conversation {
+    id: string;
+    userId: string;
+    userName: string;
+    userAvatarUrl: string;
+    role: Role.CUSTOMER | Role.MERCHANT;
+    lastMessage: string;
+    lastMessageTimestamp: string;
+    unreadCount: number;
+}
+
+// Settings
+export interface ProfileSettings {
+    name: string;
+    avatarUrl: string;
+    theme: 'light' | 'dark';
+}
+
+export interface NotificationSettings {
+    onNewMerchant: boolean;
+    onStatusChange: boolean;
+    onNewMessage: boolean;
+}
+
+export interface FinancialSettings {
+    dueWarningDays: number;
+    lateWarningDays: number;
+    veryLateWarningDays: number;
+    suspensionDays: number;
+}
+
+export interface AppSettings {
+    profile: ProfileSettings;
+    notifications: NotificationSettings;
+    financial: FinancialSettings;
 }

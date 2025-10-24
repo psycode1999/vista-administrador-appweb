@@ -14,39 +14,22 @@ interface MerchantFilters {
     lastPaymentDate: string;
 }
 
-// Haversine formula to calculate distance between two points on Earth
-const haversineDistance = (
-    coords1: { lat: number; lng: number },
-    coords2: { lat: number; lng: number }
-): number => {
-    const toRad = (x: number) => (x * Math.PI) / 180;
-    const R = 6371; // Earth radius in kilometers
+interface MerchantsViewProps {
+    contextId: string | null;
+    setContextId: (id: string | null) => void;
+}
 
-    const dLat = toRad(coords2.lat - coords1.lat);
-    const dLon = toRad(coords2.lng - coords1.lng);
-    const lat1 = toRad(coords1.lat);
-    const lat2 = toRad(coords2.lat);
-
-    const a =
-        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.sin(dLon / 2) * Math.sin(dLon / 2) * Math.cos(lat1) * Math.cos(lat2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-    return R * c;
-};
-
-
-const MerchantsView: React.FC = () => {
+const MerchantsView: React.FC<MerchantsViewProps> = ({ contextId, setContextId }) => {
     const [data, setData] = useState<MerchantWithBalance[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [selectedMerchantId, setSelectedMerchantId] = useState<string | null>(null);
-    const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
-    const [locationError, setLocationError] = useState<string | null>(null);
     const [filters, setFilters] = useState<MerchantFilters>({
         address: '',
         accountStatus: '',
         lastPaymentDate: '',
     });
+    const [highlightedMerchantId, setHighlightedMerchantId] = useState<string | null>(null);
+    const [targetMerchantId, setTargetMerchantId] = useState<string | null>(null);
 
     const fetchData = useCallback(async () => {
         setIsLoading(true);
@@ -62,7 +45,7 @@ const MerchantsView: React.FC = () => {
                 ...merchant,
                 balance: balancesMap.get(merchant.id),
             }));
-
+            
             setData(combinedData);
         } catch (error) {
             console.error("Failed to fetch merchant data:", error);
@@ -73,26 +56,6 @@ const MerchantsView: React.FC = () => {
 
     useEffect(() => {
         fetchData();
-
-        // Get user's location
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    setUserLocation({
-                        lat: position.coords.latitude,
-                        lng: position.coords.longitude,
-                    });
-                    setLocationError(null);
-                },
-                (error) => {
-                    console.error("Error getting location:", error);
-                    setLocationError("No se pudo obtener la ubicación. El orden por proximidad está desactivado.");
-                }
-            );
-        } else {
-             setLocationError("La geolocalización no es compatible con este navegador.");
-        }
-
     }, [fetchData]);
 
     const handleFilterChange = (
@@ -121,17 +84,77 @@ const MerchantsView: React.FC = () => {
             return addressMatch && accountStatusMatch && dateMatch;
         });
 
-        // Apply sorting by distance if user location is available
-        if (userLocation) {
-            processedMerchants.sort((a, b) => {
-                const distanceA = haversineDistance(userLocation, { lat: a.lat, lng: a.lng });
-                const distanceB = haversineDistance(userLocation, { lat: b.lat, lng: b.lng });
-                return distanceA - distanceB;
-            });
-        }
+        // Sort by last payment date chronologically
+        processedMerchants.sort((a, b) => {
+            if (!a.balance || !b.balance) return 0;
+            return new Date(a.balance.lastPaymentDate).getTime() - new Date(b.balance.lastPaymentDate).getTime();
+        });
 
         return processedMerchants;
-    }, [data, filters, userLocation]);
+    }, [data, filters]);
+    
+    // Effect 1: Detect incoming navigation request from contextId.
+    useEffect(() => {
+        if (contextId) {
+            // Reset filters to ensure the target will be visible.
+            setFilters({
+                address: '',
+                accountStatus: '',
+                lastPaymentDate: '',
+            });
+            // Set the target ID we need to find and highlight.
+            setTargetMerchantId(contextId);
+            // Clear any other selections.
+            setSelectedMerchantId(null);
+        }
+    }, [contextId]);
+
+    // Effect 2: Watch for the target ID and wait for the data/DOM to be ready.
+    useEffect(() => {
+        // Proceed only if we have a target and the main data is loaded.
+        if (!targetMerchantId || isLoading) {
+            return;
+        }
+
+        // Check if the target merchant exists in the full dataset.
+        const merchantExists = data.some(m => m.id === targetMerchantId);
+
+        if (merchantExists) {
+            // The filter reset is async. We need to wait for the DOM to update.
+            // A small timeout pushes this logic to the end of the execution queue,
+            // giving React time to re-render with the cleared filters.
+            const timer = setTimeout(() => {
+                const element = document.getElementById(`merchant-row-${targetMerchantId}`);
+                if (element) {
+                    // Success! Perform the scroll and highlight.
+                    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    setHighlightedMerchantId(targetMerchantId);
+
+                    // Clean up: Reset the target and clear the context prop from the parent.
+                    setTargetMerchantId(null);
+                    setContextId(null);
+
+                    // Remove the highlight after a few seconds for better UX.
+                    const highlightTimer = setTimeout(() => {
+                        setHighlightedMerchantId(null);
+                    }, 2500);
+                    
+                    return () => clearTimeout(highlightTimer);
+                } else {
+                    // Element not found in DOM, even after delay. Abort.
+                    setTargetMerchantId(null);
+                    setContextId(null);
+                }
+            }, 100); // 100ms delay is usually sufficient for the DOM to update.
+
+            return () => clearTimeout(timer);
+        } else if (!isLoading) {
+            // If data is loaded and the merchant ID is invalid, abort.
+            setTargetMerchantId(null);
+            setContextId(null);
+        }
+    }, [targetMerchantId, data, isLoading, setContextId]);
+
 
     const headers = ['Comercio', 'Total Recibido', 'Total Pagado', 'Saldo Anterior', 'Saldo Actual', 'Último Pago', 'Fecha Pago', 'Estado'];
 
@@ -164,7 +187,6 @@ const MerchantsView: React.FC = () => {
                             className="bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
                         />
                     </div>
-                    {locationError && <p className="text-xs text-center text-yellow-600 dark:text-yellow-400">{locationError}</p>}
                 </div>
 
                 <Table
@@ -174,18 +196,55 @@ const MerchantsView: React.FC = () => {
                     renderRow={(merchant: MerchantWithBalance) => {
                         const { balance } = merchant;
                         return (
-                             <tr key={merchant.id} onClick={() => setSelectedMerchantId(merchant.id)} className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                             <tr
+                                key={merchant.id}
+                                id={`merchant-row-${merchant.id}`}
+                                onClick={() => setSelectedMerchantId(merchant.id)}
+                                className={`cursor-pointer transition-all duration-500 ease-in-out ${
+                                    merchant.id === highlightedMerchantId
+                                        ? 'bg-primary-100 dark:bg-primary-900/50 ring-2 ring-primary-500'
+                                        : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                                }`}
+                            >
                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{merchant.name}</td>
                                 {balance ? (
                                     <>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">${balance.totalTipsReceived.toFixed(2)}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">${balance.totalTipsPaid.toFixed(2)}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">${(balance.previousBalance ?? 0).toFixed(2)}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900 dark:text-white">${balance.currentBalance.toFixed(2)}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                            <div className="font-bold text-gray-900 dark:text-white">${balance.currentBalance.toFixed(2)}</div>
+                                            {(() => {
+                                                if (balance.previousBalance !== null && balance.lastPaymentAmount !== null) {
+                                                    // Difference = Saldo Anterior - Último Pago
+                                                    const difference = balance.previousBalance - balance.lastPaymentAmount;
+                                        
+                                                    // Don't show anything for perfectly balanced payments.
+                                                    if (Math.abs(difference) < 0.01) return null;
+                                        
+                                                    if (difference > 0) { // Positive difference = Faltante (shortage). User wants GREEN with PLUS.
+                                                        return (
+                                                            <div className="text-xs text-green-500 font-medium">
+                                                                + ${difference.toFixed(2)}
+                                                            </div>
+                                                        );
+                                                    } else { // Negative difference = Sobrante (surplus). User wants RED with MINUS.
+                                                        return (
+                                                            <div className="text-xs text-red-500 font-medium">
+                                                                - ${Math.abs(difference).toFixed(2)}
+                                                            </div>
+                                                        );
+                                                    }
+                                                }
+                                                return null;
+                                            })()}
+                                        </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">${(balance.lastPaymentAmount ?? 0).toFixed(2)}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{new Date(balance.lastPaymentDate).toLocaleDateString('es-ES')}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm">
                                             {(() => {
+                                                if (!balance) return null;
+
                                                 const lastPaymentDate = new Date(balance.lastPaymentDate);
                                                 const today = new Date();
                                                 lastPaymentDate.setHours(0, 0, 0, 0);
@@ -193,34 +252,28 @@ const MerchantsView: React.FC = () => {
                                                 const diffTime = today.getTime() - lastPaymentDate.getTime();
                                                 const daysSincePayment = Math.floor(diffTime / (1000 * 60 * 60 * 24));
                                                 
-                                                let statusColorClass = '';
-                                                const isSpecialDay = [15, 30, 45, 60].includes(daysSincePayment);
+                                                let statusText: string;
+                                                let statusColorClass: string;
 
-                                                if (daysSincePayment === 60) {
+                                                if (daysSincePayment >= 60) {
+                                                    statusText = 'Suspendida';
                                                     statusColorClass = 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
-                                                } else if (daysSincePayment === 45) {
+                                                } else if (daysSincePayment >= 45) {
+                                                    statusText = 'Pendiente';
                                                     statusColorClass = 'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-300';
-                                                } else if (daysSincePayment === 30) {
+                                                } else if (daysSincePayment >= 30) {
+                                                    statusText = 'Pendiente';
                                                     statusColorClass = 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300';
-                                                } else if (daysSincePayment === 15) {
+                                                } else if (daysSincePayment >= 15) {
+                                                    statusText = 'Pendiente';
                                                     statusColorClass = 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
                                                 } else {
-                                                    statusColorClass = balance.status === AccountStatus.ACTIVE
-                                                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
-                                                        : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
+                                                    statusText = 'Activa';
+                                                    statusColorClass = 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
                                                 }
 
-                                                // Determine if the date string should be shown
-                                                const showDate = balance.status === AccountStatus.SUSPENDED || isSpecialDay;
-                                                
-                                                // Format the date string to show exact days
+                                                const showDate = daysSincePayment >= 15;
                                                 const dateString = `hace ${daysSincePayment} día${daysSincePayment !== 1 ? 's' : ''}`;
-                                                
-                                                let statusText: string = balance.status;
-                                                if (daysSincePayment === 15 || daysSincePayment === 30 || daysSincePayment === 45) {
-                                                    statusText = 'Pendiente';
-                                                }
-
 
                                                 return (
                                                     <div className="flex items-center space-x-2">
@@ -231,7 +284,7 @@ const MerchantsView: React.FC = () => {
                                                             <span className="text-gray-500 dark:text-gray-400">{dateString}</span>
                                                         )}
                                                     </div>
-                                                )
+                                                );
                                             })()}
                                         </td>
                                     </>

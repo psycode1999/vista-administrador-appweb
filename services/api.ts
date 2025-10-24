@@ -2,13 +2,32 @@ import {
   Notification, Merchant, TipsStatus, AccountStatus, MerchantProfile,
   ActivityStatus, TipBalance, MerchantOrderSummary, Order, OrderStatus, OrderFilterOptions,
   MerchantSummaryFilters, Product, ProductCategory, TipPayment, AuditLog, Receipt, ReceiptStatus, DashboardStats,
-  DashboardMetricKey, HistoricalDataPoint, DashboardStat
+  DashboardMetricKey, HistoricalDataPoint, DashboardStat, Conversation, Message, Role, MessageStatus, AppSettings
 } from '../types';
 
 // Helper to create a date string in YYY-MM-DD format
 const toDateString = (date: Date) => date.toISOString().split('T')[0];
 
 // --- MOCK DATA ---
+
+let settings: AppSettings = {
+    profile: {
+        name: 'Usuario Administrador',
+        avatarUrl: 'https://i.pravatar.cc/150?u=admin',
+        theme: 'light',
+    },
+    notifications: {
+        onNewMerchant: true,
+        onStatusChange: true,
+        onNewMessage: true,
+    },
+    financial: {
+        dueWarningDays: 15,
+        lateWarningDays: 30,
+        veryLateWarningDays: 45,
+        suspensionDays: 60,
+    }
+};
 
 const rawMerchants: Omit<Merchant, 'lat' | 'lng'>[] = [
     { id: 'MERCH-1', name: 'Café del Sol', address: 'Av. Siempre Viva 123', tipPerTransaction: 0.25, lastPaymentDate: '2023-10-10', tipsStatus: TipsStatus.PENDING, daysDue: 15, amountDue: 120.50, accountStatus: AccountStatus.ACTIVE },
@@ -17,6 +36,7 @@ const rawMerchants: Omit<Merchant, 'lat' | 'lng'>[] = [
     { id: 'MERCH-4', name: 'TecnoGadgets', address: 'Paseo de la Reforma 101', tipPerTransaction: 0.30, lastPaymentDate: '2023-08-20', tipsStatus: TipsStatus.PENDING, daysDue: 66, amountDue: 890.00, accountStatus: AccountStatus.SUSPENDED },
     { id: 'MERCH-5', name: 'Verde Fresco', address: 'Insurgentes Sur 202', tipPerTransaction: 0.10, lastPaymentDate: '2023-10-25', tipsStatus: TipsStatus.PENDING, daysDue: 5, amountDue: 45.20, accountStatus: AccountStatus.ACTIVE },
     { id: 'MERCH-6', name: 'El Rincón del Gourmet', address: 'Plaza de la Constitución 1', tipPerTransaction: 0.25, lastPaymentDate: '2023-09-15', tipsStatus: TipsStatus.PENDING, daysDue: 40, amountDue: 210.00, accountStatus: AccountStatus.ACTIVE },
+    { id: 'MERCH-7', name: 'La Esquina Creativa', address: 'Calle de la Imaginación 303', tipPerTransaction: 0.18, lastPaymentDate: toDateString(new Date()), tipsStatus: TipsStatus.PAID, daysDue: 0, amountDue: 0, accountStatus: AccountStatus.ACTIVE },
 ];
 
 let products: Product[] = [
@@ -29,23 +49,41 @@ let products: Product[] = [
     { id: 'PROD-7', name: 'Latte', brand: 'Cafetal', merchantName: 'Café del Sol', category: ProductCategory.COFFEE, price: 4.00, stock: 100 },
 ];
 
-let orders: Order[] = [
-    { id: 'ORD-1', merchantId: 'MERCH-1', customerName: 'Ana García', customerAddress: 'Calle A #1', location: 'Centro', date: toDateString(new Date()), status: OrderStatus.PROCESSING, products: [{id: 'PROD-1', name: 'Café Americano', price: 3.50, quantity: 2}], merchantTip: 1.00, platformTip: 0.50, method: 'Tarjeta de Crédito' },
-    { id: 'ORD-2', merchantId: 'MERCH-2', customerName: 'Carlos Rodríguez', customerAddress: 'Calle B #2', location: 'Polanco', date: toDateString(new Date()), status: OrderStatus.PENDING, products: [{id: 'PROD-2', name: 'Libro de Ficción', price: 15.00, quantity: 1}], merchantTip: 2.00, platformTip: 1.00, method: 'PayPal' },
-    { id: 'ORD-3', merchantId: 'MERCH-1', customerName: 'Sofía Martínez', customerAddress: 'Calle C #3', location: 'Condesa', date: toDateString(new Date(Date.now() - 1 * 24 * 60 * 60 * 1000)), status: OrderStatus.DELIVERED, products: [{id: 'PROD-7', name: 'Latte', price: 4.00, quantity: 1}], merchantTip: 1.50, platformTip: 0.75, method: 'Efectivo' },
-    { id: 'ORD-4', merchantId: 'MERCH-4', customerName: 'Luis Hernández', customerAddress: 'Calle D #4', location: 'Santa Fe', date: toDateString(new Date(Date.now() - 2 * 24 * 60 * 60 * 1000)), status: OrderStatus.CANCELLED, products: [{id: 'PROD-4', name: 'Audífonos Inalámbricos', price: 79.99, quantity: 1}], merchantTip: 0, platformTip: 0, method: 'Tarjeta de Crédito' },
+// --- COHERENT MOCK DATA FOR ORDERS AND RECEIPTS ---
+const orders: Order[] = [
+    // --- Merchant 1: Café del Sol ---
+    { id: 'ORD-101', merchantId: 'MERCH-1', customerName: 'Ana García', customerAddress: 'Calle A #1', location: 'Centro', date: '2023-09-15', status: OrderStatus.DELIVERED, products: [{id: 'PROD-1', name: 'Café Americano', price: 3.50, quantity: 2}], merchantTip: 1.00, platformTip: 10.50, method: 'Tarjeta de Crédito' },
+    { id: 'ORD-102', merchantId: 'MERCH-1', customerName: 'Luis Hernández', customerAddress: 'Calle D #4', location: 'Condesa', date: '2023-10-01', status: OrderStatus.DELIVERED, products: [{id: 'PROD-7', name: 'Latte', price: 4.00, quantity: 1}], merchantTip: 1.50, platformTip: 15.25, method: 'Efectivo' },
+    { id: 'ORD-103', merchantId: 'MERCH-1', customerName: 'Sofía Martínez', customerAddress: 'Calle C #3', location: 'Condesa', date: toDateString(new Date(Date.now() - 15 * 24 * 60 * 60 * 1000)), status: OrderStatus.SHIPPED, products: [{id: 'PROD-7', name: 'Latte', price: 4.00, quantity: 1}], merchantTip: 1.50, platformTip: 8.75, method: 'Efectivo' },
+    { id: 'ORD-104', merchantId: 'MERCH-1', customerName: 'Ana García', customerAddress: 'Calle A #1', location: 'Centro', date: toDateString(new Date()), status: OrderStatus.PROCESSING, products: [{id: 'PROD-1', name: 'Café Americano', price: 3.50, quantity: 2}], merchantTip: 1.00, platformTip: 5.25, method: 'Tarjeta de Crédito' },
+    
+    // --- Merchant 2: Libros y Letras (Paid up) ---
+    { id: 'ORD-201', merchantId: 'MERCH-2', customerName: 'Carlos Rodríguez', customerAddress: 'Calle B #2', location: 'Polanco', date: '2023-10-20', status: OrderStatus.DELIVERED, products: [{id: 'PROD-2', name: 'Libro de Ficción', price: 15.00, quantity: 1}], merchantTip: 2.00, platformTip: 12.00, method: 'PayPal' },
+    { id: 'ORD-202', merchantId: 'MERCH-2', customerName: 'Elena Pérez', customerAddress: 'Calle E #5', location: 'Polanco', date: '2023-10-28', status: OrderStatus.DELIVERED, products: [{id: 'PROD-2', name: 'Libro de Ficción', price: 15.00, quantity: 1}], merchantTip: 2.00, platformTip: 13.50, method: 'PayPal' },
+    
+    // --- Merchant 3: Ropa Urbana Co. (Multiple payments) ---
+    { id: 'ORD-301', merchantId: 'MERCH-3', customerName: 'Jorge Ramírez', customerAddress: 'Calle F #6', location: 'Roma', date: '2023-08-10', status: OrderStatus.DELIVERED, products: [{id: 'PROD-3', name: 'Camiseta Gráfica', price: 25.00, quantity: 1}], merchantTip: 3.00, platformTip: 40.00, method: 'Tarjeta de Crédito' },
+    { id: 'ORD-302', merchantId: 'MERCH-3', customerName: 'Laura Torres', customerAddress: 'Calle G #7', location: 'Roma', date: '2023-09-01', status: OrderStatus.DELIVERED, products: [{id: 'PROD-3', name: 'Camiseta Gráfica', price: 25.00, quantity: 2}], merchantTip: 5.00, platformTip: 60.50, method: 'Tarjeta de Crédito' },
+    { id: 'ORD-303', merchantId: 'MERCH-3', customerName: 'Pedro Gómez', customerAddress: 'Calle H #8', location: 'Roma', date: '2023-10-15', status: OrderStatus.DELIVERED, products: [{id: 'PROD-3', name: 'Camiseta Gráfica', price: 25.00, quantity: 1}], merchantTip: 3.00, platformTip: 55.25, method: 'Tarjeta de Crédito' },
+
+    // --- Merchant 4: TecnoGadgets (Suspended, no recent payments) ---
+    { id: 'ORD-401', merchantId: 'MERCH-4', customerName: 'Mario Bros', customerAddress: 'Calle D #4', location: 'Santa Fe', date: '2023-07-15', status: OrderStatus.DELIVERED, products: [{id: 'PROD-4', name: 'Audífonos Inalámbricos', price: 79.99, quantity: 1}], merchantTip: 10, platformTip: 150.00, method: 'Tarjeta de Crédito' },
+    { id: 'ORD-402', merchantId: 'MERCH-4', customerName: 'Luigi Bros', customerAddress: 'Calle D #4', location: 'Santa Fe', date: '2023-08-01', status: OrderStatus.DELIVERED, products: [{id: 'PROD-4', name: 'Audífonos Inalámbricos', price: 79.99, quantity: 1}], merchantTip: 10, platformTip: 180.50, method: 'Tarjeta de Crédito' },
+    // A cancelled order that should not be counted
+    { id: 'ORD-403', merchantId: 'MERCH-4', customerName: 'Bowser King', customerAddress: 'Calle D #4', location: 'Santa Fe', date: toDateString(new Date(Date.now() - 2 * 24 * 60 * 60 * 1000)), status: OrderStatus.CANCELLED, products: [{id: 'PROD-4', name: 'Audífonos Inalámbricos', price: 79.99, quantity: 1}], merchantTip: 0, platformTip: 0, method: 'Tarjeta de Crédito' },
 ];
 
-let notifications: Notification[] = [
-    { id: '1', message: 'El pago de propinas para "Café del Sol" está pendiente.', timestamp: new Date(Date.now() - 2 * 60 * 1000).toISOString(), read: false },
-    { id: '2', message: 'Nuevo pedido #ORD-2 recibido para "Libros y Letras".', timestamp: new Date(Date.now() - 5 * 60 * 1000).toISOString(), read: false },
-    { id: '3', message: 'La cuenta de "TecnoGadgets" ha sido suspendida.', timestamp: new Date(Date.now() - 30 * 60 * 1000).toISOString(), read: true },
-];
+let notifications: Notification[] = [];
 
 const initialReceipts: Omit<Receipt, 'id'| 'merchantName' | 'status'>[] = [
+    // Corresponds to MERCH-1 payment history
+    { merchantId: 'MERCH-1', pendingBalance: 25.75, amountReceived: 20.00, difference: 5.75, createdBy: 'Usuario Administrador', date: new Date('2023-10-10T11:00:00Z').toISOString() },
+    // Corresponds to MERCH-2 payment history (paid in full)
     { merchantId: 'MERCH-2', pendingBalance: 25.50, amountReceived: 25.50, difference: 0, createdBy: 'Usuario Administrador', date: new Date('2023-11-01T10:00:00Z').toISOString() },
-    { merchantId: 'MERCH-5', pendingBalance: 75.20, amountReceived: 30.00, difference: 45.20, createdBy: 'Usuario Administrador', date: new Date('2023-10-25T14:30:00Z').toISOString() },
-    { merchantId: 'MERCH-1', pendingBalance: 170.50, amountReceived: 50.00, difference: 120.50, createdBy: 'Usuario Administrador', date: new Date('2023-10-10T11:00:00Z').toISOString() },
+    // Corresponds to MERCH-3 payment history (two payments)
+    { merchantId: 'MERCH-3', pendingBalance: 40.00, amountReceived: 40.00, difference: 0, createdBy: 'Usuario Administrador', date: new Date('2023-08-20T09:00:00Z').toISOString() },
+    { merchantId: 'MERCH-3', pendingBalance: 60.50, amountReceived: 50.00, difference: 10.50, createdBy: 'Usuario Administrador', date: new Date('2023-09-25T15:00:00Z').toISOString() },
+    // No receipts for MERCH-4
 ];
 
 
@@ -55,6 +93,34 @@ let auditLogs: AuditLog[] = [
     { id: 'LOG-3', timestamp: new Date(Date.now() - 10 * 60 * 1000).toISOString(), user: 'Usuario Administrador', action: 'CREATE_RECEIPT', details: 'Recibo #REC-123 generado para "Libros y Letras".' },
 ];
 
+let conversations: Conversation[] = [
+    { id: 'CONV-CUST-1', userId: 'CUST-1', userName: 'Ana García', userAvatarUrl: 'https://i.pravatar.cc/150?u=ana', role: Role.CUSTOMER, lastMessage: '¡Gracias por la ayuda!', lastMessageTimestamp: new Date(Date.now() - 5 * 60 * 1000).toISOString(), unreadCount: 0 },
+    { id: 'CONV-CUST-2', userId: 'CUST-2', userName: 'Carlos Rodríguez', userAvatarUrl: 'https://i.pravatar.cc/150?u=carlos', role: Role.CUSTOMER, lastMessage: 'Tengo una pregunta sobre mi pedido...', lastMessageTimestamp: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(), unreadCount: 2 },
+    { id: 'CONV-MERCH-1', userId: 'MERCH-1', userName: 'Café del Sol', userAvatarUrl: 'https://i.pravatar.cc/150?u=cafe', role: Role.MERCHANT, lastMessage: '¿Podrían revisar el último pago de propinas?', lastMessageTimestamp: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(), unreadCount: 1 },
+    { id: 'CONV-MERCH-2', userId: 'MERCH-2', userName: 'Libros y Letras', userAvatarUrl: 'https://i.pravatar.cc/150?u=libros', role: Role.MERCHANT, lastMessage: 'Perfecto, gracias.', lastMessageTimestamp: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), unreadCount: 0 },
+];
+
+let archivedConversations: Conversation[] = [];
+
+const messages: { [conversationId: string]: Message[] } = {
+    'CONV-CUST-1': [
+        { id: 'MSG-C1-1', conversationId: 'CONV-CUST-1', sender: 'user', text: 'Hola, necesito ayuda con mi cuenta.', timestamp: new Date(Date.now() - 15 * 60 * 1000).toISOString(), status: MessageStatus.READ },
+        { id: 'MSG-C1-2', conversationId: 'CONV-CUST-1', sender: 'admin', text: 'Claro, ¿en qué puedo ayudarte?', timestamp: new Date(Date.now() - 14 * 60 * 1000).toISOString(), status: MessageStatus.READ },
+        { id: 'MSG-C1-3', conversationId: 'CONV-CUST-1', sender: 'user', text: 'Ya lo resolví, ¡Gracias por la ayuda!', timestamp: new Date(Date.now() - 5 * 60 * 1000).toISOString(), status: MessageStatus.READ },
+    ],
+    'CONV-CUST-2': [
+        { id: 'MSG-C2-1', conversationId: 'CONV-CUST-2', sender: 'user', text: 'Tengo una pregunta sobre mi pedido...', timestamp: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(), status: MessageStatus.DELIVERED },
+    ],
+    'CONV-MERCH-1': [
+        { id: 'MSG-M1-1', conversationId: 'CONV-MERCH-1', sender: 'user', text: '¿Podrían revisar el último pago de propinas?', timestamp: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(), status: MessageStatus.DELIVERED },
+    ],
+    'CONV-MERCH-2': [
+        { id: 'MSG-M2-1', conversationId: 'CONV-MERCH-2', sender: 'admin', text: 'Hemos procesado su solicitud.', timestamp: new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString(), status: MessageStatus.READ },
+        { id: 'MSG-M2-2', conversationId: 'CONV-MERCH-2', sender: 'user', text: 'Perfecto, gracias.', timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), status: MessageStatus.READ },
+    ]
+};
+
+
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 // --- DATA CONSISTENCY LOGIC ---
@@ -63,73 +129,185 @@ let tipBalances: TipBalance[];
 let receipts: Receipt[];
 
 function initializeAndSyncData() {
-    // 1. Create fresh state from the raw definitions.
+    // --- Step 1: Calculate lifetime Total Tips Received for each merchant (Rule A) ---
+    // This is the sum of `platformTip` from all orders that are shipped or delivered.
+    const totalTipsPerMerchant = new Map<string, number>();
+    orders.forEach(order => {
+        if ([OrderStatus.SHIPPED, OrderStatus.DELIVERED].includes(order.status)) {
+            const currentTips = totalTipsPerMerchant.get(order.merchantId) || 0;
+            totalTipsPerMerchant.set(order.merchantId, currentTips + order.platformTip);
+        }
+    });
+
+    // --- Step 2: Process receipts chronologically to get payment-related fields ---
+    const paymentDataPerMerchant = new Map<string, {
+        totalPaid: number;          // For Rule B
+        lastPaymentAmount: number | null; // For Rule E
+        lastPaymentDate: string;      // For Rule F
+        previousBalance: number | null;   // For Rule C
+    }>();
+
+    // Sort all receipts by date to correctly identify the latest one for each merchant
+    const sortedReceipts = [...receipts].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    for (const merchant of rawMerchants) {
+        // Get all receipts for the current merchant, already sorted by date
+        const merchantReceipts = sortedReceipts.filter(r => r.merchantId === merchant.id);
+
+        // Rule B: Calculate the total amount paid from all receipts.
+        const totalPaid = merchantReceipts.reduce((sum, r) => sum + r.amountReceived, 0);
+        
+        // Get the single most recent receipt to extract last payment details.
+        const latestReceipt = merchantReceipts.length > 0 ? merchantReceipts[merchantReceipts.length - 1] : null;
+
+        paymentDataPerMerchant.set(merchant.id, {
+            totalPaid: totalPaid,
+            // Rule E: Get amount from the latest receipt.
+            lastPaymentAmount: latestReceipt ? latestReceipt.amountReceived : null,
+            // Rule F: Get date from the latest receipt, or fall back to the initial static date.
+            lastPaymentDate: latestReceipt ? latestReceipt.date : new Date(merchant.lastPaymentDate).toISOString(),
+            // Rule C: Get the pending balance *before* the last payment was made.
+            previousBalance: latestReceipt ? latestReceipt.pendingBalance : null
+        });
+    }
+
+    // --- Step 3: Combine tip data and payment data to create final TipBalance objects ---
+    tipBalances = rawMerchants.map(m => {
+        const totalTipsReceived = totalTipsPerMerchant.get(m.id) || 0;
+        const paymentData = paymentDataPerMerchant.get(m.id)!;
+
+        // Rule D: Saldo Actual is the lifetime total tips received minus the lifetime total paid.
+        const currentBalance = totalTipsReceived - paymentData.totalPaid;
+
+        return {
+            id: m.id,
+            totalTipsReceived: totalTipsReceived,
+            totalTipsPaid: paymentData.totalPaid,
+            previousBalance: paymentData.previousBalance,
+            currentBalance: Math.max(0, currentBalance), // A balance should not be negative.
+            lastPaymentAmount: paymentData.lastPaymentAmount,
+            lastPaymentDate: paymentData.lastPaymentDate,
+            status: AccountStatus.ACTIVE, // This is a temporary status; it will be updated in the next step.
+        };
+    });
+    
+    // --- Step 4: Create a fresh, independent copy of the merchant data for modification ---
     merchants = rawMerchants.map(m => ({
         ...JSON.parse(JSON.stringify(m)),
-        lat: 19.4326 + (Math.random() - 0.5) * 0.1,
+        lat: 19.4326 + (Math.random() - 0.5) * 0.1, // Add mock geo-coordinates
         lng: -99.1332 + (Math.random() - 0.5) * 0.1
     }));
     
-    tipBalances = rawMerchants.map(m => ({
-        id: m.id,
-        totalTipsReceived: m.amountDue, // Total debt accumulated before any payments
-        totalTipsPaid: 0,
-        previousBalance: null,
-        currentBalance: m.amountDue,
-        lastPaymentAmount: null,
-        lastPaymentDate: new Date(m.lastPaymentDate).toISOString(),
-        status: m.accountStatus,
-    }));
-
-    // 2. Sort receipts chronologically to apply them in order.
-    const sortedReceipts = [...receipts].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-    // 3. Apply each receipt transaction to the fresh state.
-    for (const receipt of sortedReceipts) {
-        const merchant = merchants.find(m => m.id === receipt.merchantId);
-        const balance = tipBalances.find(b => b.id === receipt.merchantId);
-
-        if (merchant && balance) {
-            const amountReceived = receipt.amountReceived;
-            
-            balance.previousBalance = balance.currentBalance;
-            balance.currentBalance -= amountReceived;
-            if (balance.currentBalance < 0) balance.currentBalance = 0;
-            balance.totalTipsPaid += amountReceived;
-            
-            balance.lastPaymentAmount = amountReceived;
-            balance.lastPaymentDate = receipt.date;
-
-            // Update merchant record to reflect the latest state after this payment
-            merchant.amountDue = balance.currentBalance;
-            merchant.lastPaymentDate = toDateString(new Date(receipt.date));
-            merchant.tipsStatus = balance.currentBalance > 0 ? TipsStatus.PENDING : TipsStatus.PAID;
-            merchant.daysDue = 0; 
-        }
-    }
-
-    // 4. Override some dates for demonstration of the status color feature
+    // --- Step 5: Update final merchant records with calculated balances and statuses ---
     const today = new Date();
-    const merchantsToUpdate = [
-        { id: 'MERCH-1', daysAgo: 15 },
-        { id: 'MERCH-3', daysAgo: 30 },
-        { id: 'MERCH-6', daysAgo: 45 },
-        { id: 'MERCH-4', daysAgo: 60 },
-    ];
-    
-    merchantsToUpdate.forEach(({ id, daysAgo }) => {
-        const merchant = merchants.find(m => m.id === id);
-        const balance = tipBalances.find(b => b.id === id);
-        if (merchant && balance) {
-            const newDate = new Date(today);
-            newDate.setDate(today.getDate() - daysAgo);
-            const newDateString = newDate.toISOString();
+    today.setHours(0, 0, 0, 0);
+
+    merchants.forEach(merchant => {
+        const balance = tipBalances.find(b => b.id === merchant.id);
+        if (!balance) return; // Should not happen, but a good safeguard.
+
+        // Update merchant fields based on the definitive balance calculation.
+        merchant.amountDue = balance.currentBalance;
+        merchant.lastPaymentDate = toDateString(new Date(balance.lastPaymentDate));
+        merchant.tipsStatus = balance.currentBalance > 0 ? TipsStatus.PENDING : TipsStatus.PAID;
+        
+        // If there's a balance due, calculate days overdue and determine account status.
+        if (balance.currentBalance > 0) {
+            const lastPaymentDate = new Date(balance.lastPaymentDate);
+            lastPaymentDate.setHours(0, 0, 0, 0);
+
+            const diffTime = today.getTime() - lastPaymentDate.getTime();
+            const daysSincePayment = Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
             
-            merchant.lastPaymentDate = toDateString(newDate);
-            balance.lastPaymentDate = newDateString;
+            merchant.daysDue = daysSincePayment;
+
+            // Apply financial rules to set the final account status.
+            if (daysSincePayment >= settings.financial.suspensionDays) {
+                merchant.accountStatus = AccountStatus.SUSPENDED;
+            } else {
+                merchant.accountStatus = AccountStatus.ACTIVE;
+            }
+        } else {
+            // If balance is zero, the account is active and up-to-date.
+            merchant.daysDue = 0;
+            merchant.accountStatus = AccountStatus.ACTIVE;
+            merchant.tipsStatus = TipsStatus.PAID;
         }
+
+        // Sync the account status back to the balance object for consistency.
+        balance.status = merchant.accountStatus;
     });
 }
+
+
+function generateAndSetNotifications() {
+    const dynamicNotifications: Notification[] = [];
+    let idCounter = 1;
+    const now = Date.now();
+
+    // Rule A: New Merchant Registration
+    if (settings.notifications.onNewMerchant) {
+        dynamicNotifications.push({
+            id: (idCounter++).toString(),
+            message: 'El nuevo comercio "La Esquina Creativa" se ha registrado.',
+            timestamp: new Date(now - 1 * 60 * 1000).toISOString(),
+            read: false,
+            linkTo: { view: 'Merchants', targetId: 'MERCH-7' }
+        });
+    }
+
+    // Rule B: Merchant Status Change
+    if (settings.notifications.onStatusChange) {
+        merchants.forEach(merchant => {
+            const lastPaymentDate = new Date(merchant.lastPaymentDate);
+            const today = new Date();
+            lastPaymentDate.setHours(0, 0, 0, 0);
+            today.setHours(0, 0, 0, 0);
+            const diffTime = today.getTime() - lastPaymentDate.getTime();
+            const daysSincePayment = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+            if (merchant.accountStatus === AccountStatus.SUSPENDED) {
+                dynamicNotifications.push({
+                    id: (idCounter++).toString(),
+                    message: `La cuenta de "${merchant.name}" ha sido suspendida.`,
+                    timestamp: new Date(now - (idCounter * 5) * 60 * 1000).toISOString(),
+                    read: true,
+                    linkTo: { view: 'Merchants', targetId: merchant.id }
+                });
+            } else if ([
+                settings.financial.dueWarningDays, 
+                settings.financial.lateWarningDays, 
+                settings.financial.veryLateWarningDays
+            ].includes(daysSincePayment)) {
+                 dynamicNotifications.push({
+                    id: (idCounter++).toString(),
+                    message: `El pago de propinas para "${merchant.name}" está pendiente.`,
+                    timestamp: new Date(now - (idCounter * 5) * 60 * 1000).toISOString(),
+                    read: false,
+                    linkTo: { view: 'Merchants', targetId: merchant.id }
+                });
+            }
+        });
+    }
+
+    // Rule C: New Messages
+    if (settings.notifications.onNewMessage) {
+        conversations.forEach(conv => {
+            if (conv.unreadCount > 0) {
+                dynamicNotifications.push({
+                    id: (idCounter++).toString(),
+                    message: `Tienes ${conv.unreadCount} mensaje(s) nuevo(s) de "${conv.userName}".`,
+                    timestamp: conv.lastMessageTimestamp,
+                    read: false,
+                    linkTo: { view: 'Messages', targetId: conv.id }
+                });
+            }
+        });
+    }
+    
+    notifications = dynamicNotifications;
+}
+
 
 // Initialize global receipts from the raw definition, ensuring they have full properties
 receipts = initialReceipts.map((r, i) => ({
@@ -138,8 +316,10 @@ receipts = initialReceipts.map((r, i) => ({
     merchantName: rawMerchants.find(m => m.id === r.merchantId)?.name ?? 'N/A',
     status: ReceiptStatus.GENERATED,
 }));
-// Run the synchronization function once when the module is loaded.
+
+// Run initialization and generate notifications
 initializeAndSyncData();
+generateAndSetNotifications();
 
 
 // --- NEW CENTRALIZED DATA GENERATION FOR DASHBOARD ---
@@ -196,8 +376,24 @@ const generateAllHistoricalData = () => {
 
 // --- API FUNCTIONS ---
 export const api = {
+    async getSettings(): Promise<AppSettings> {
+        await sleep(150);
+        return JSON.parse(JSON.stringify(settings));
+    },
+
+    async updateSettings(newSettings: AppSettings): Promise<AppSettings> {
+        await sleep(500);
+        settings = JSON.parse(JSON.stringify(newSettings));
+        // After updating settings, re-run data sync and notification generation
+        // to ensure the application state reflects the new rules.
+        initializeAndSyncData();
+        generateAndSetNotifications();
+        return settings;
+    },
     async getNotifications(): Promise<Notification[]> {
         await sleep(300);
+        // Ensure notifications are fresh based on current settings
+        generateAndSetNotifications();
         return notifications.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     },
     async markNotificationAsRead(id: string): Promise<void> {
@@ -317,13 +513,13 @@ export const api = {
     },
     async getTipPayments(): Promise<TipPayment[]> {
         await sleep(300);
-        return orders.filter(o => o.merchantTip > 0).map((o, i) => ({
+        return orders.filter(o => o.platformTip > 0).map((o, i) => ({
             id: `TIP-${o.id}`,
             orderId: o.id,
             customerName: o.customerName,
             merchantName: merchants.find(m => m.id === o.merchantId)?.name ?? 'N/A',
             date: o.date,
-            amount: o.merchantTip
+            amount: o.platformTip
         }));
     },
     async getAuditLogs(): Promise<AuditLog[]> {
@@ -369,6 +565,89 @@ export const api = {
         
         // Find and return the newly created receipt (the instance in the global array)
         return receipts.find(r => r.id === newReceipt.id)!;
+    },
+
+    async getConversations(role: Role.CUSTOMER | Role.MERCHANT): Promise<Conversation[]> {
+        await sleep(400);
+        return conversations
+            .filter(c => c.role === role)
+            .sort((a, b) => new Date(b.lastMessageTimestamp).getTime() - new Date(a.lastMessageTimestamp).getTime());
+    },
+     async getArchivedConversations(role: Role.CUSTOMER | Role.MERCHANT): Promise<Conversation[]> {
+        await sleep(400);
+        return archivedConversations
+            .filter(c => c.role === role)
+            .sort((a, b) => new Date(b.lastMessageTimestamp).getTime() - new Date(a.lastMessageTimestamp).getTime());
+    },
+    async getMessages(conversationId: string): Promise<Message[]> {
+        await sleep(300);
+        return messages[conversationId] || [];
+    },
+    async sendMessage(conversationId: string, text: string): Promise<Message> {
+        await sleep(500);
+        const newMessage: Message = {
+            id: `MSG-${Date.now()}`,
+            conversationId,
+            sender: 'admin',
+            text,
+            timestamp: new Date().toISOString(),
+            status: MessageStatus.DELIVERED, // Sent and delivered
+        };
+        if (messages[conversationId]) {
+            messages[conversationId].push(newMessage);
+        } else {
+            messages[conversationId] = [newMessage];
+        }
+
+        // Update conversation's last message
+        const convIndex = conversations.findIndex(c => c.id === conversationId);
+        if (convIndex > -1) {
+            conversations[convIndex].lastMessage = text;
+            conversations[convIndex].lastMessageTimestamp = newMessage.timestamp;
+            
+            // Simulate user reading the message after a delay
+            setTimeout(() => {
+                const msgIndex = messages[conversationId].findIndex(m => m.id === newMessage.id);
+                if (msgIndex > -1) {
+                    messages[conversationId][msgIndex].status = MessageStatus.READ;
+                }
+            }, 3000);
+        }
+        
+        return newMessage;
+    },
+    async markConversationAsRead(conversationId: string): Promise<void> {
+        await sleep(100);
+        const convIndex = conversations.findIndex(c => c.id === conversationId);
+        if (convIndex > -1) {
+            conversations[convIndex].unreadCount = 0;
+        }
+    },
+    async archiveConversations(ids: string[]): Promise<void> {
+        await sleep(500);
+        const toArchive = conversations.filter(c => ids.includes(c.id));
+        archivedConversations.push(...toArchive);
+        conversations = conversations.filter(c => !ids.includes(c.id));
+    },
+    async deleteConversations(ids: string[], fromArchive: boolean): Promise<void> {
+        await sleep(500);
+        if (fromArchive) {
+            archivedConversations = archivedConversations.filter(c => !ids.includes(c.id));
+        } else {
+            conversations = conversations.filter(c => !ids.includes(c.id));
+        }
+    },
+    async getConversationById(id: string): Promise<{ conversation: Conversation; isArchived: boolean } | undefined> {
+        await sleep(100);
+        let conversation = conversations.find(c => c.id === id);
+        if (conversation) {
+            return { conversation, isArchived: false };
+        }
+        conversation = archivedConversations.find(c => c.id === id);
+        if (conversation) {
+            return { conversation, isArchived: true };
+        }
+        return undefined;
     },
 
     async getDashboardStats(): Promise<DashboardStats> {
