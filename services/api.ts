@@ -6,7 +6,14 @@ import {
 } from '../types';
 
 // Helper to create a date string in YYY-MM-DD format
-const toDateString = (date: Date) => date.toISOString().split('T')[0];
+const toDateString = (date: Date): string => {
+    // This function creates a YYYY-MM-DD string based on the user's local timezone,
+    // which correctly aligns with the values from an <input type="date">.
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
 
 // --- MOCK DATA ---
 
@@ -123,120 +130,168 @@ const messages: { [conversationId: string]: Message[] } = {
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
+
+// --- REFACTORED DATA CONSISTENCY LOGIC ---
+
+/**
+ * Rule A: Calculates 'Total Recibido' by summing platform tips from 
+ * all delivered or shipped orders for each merchant.
+ */
+const calculateTotalTipsPerMerchant = (orders: Order[]): Map<string, number> => {
+    const totalTips = new Map<string, number>();
+    orders.forEach(order => {
+        if ([OrderStatus.SHIPPED, OrderStatus.DELIVERED].includes(order.status)) {
+            const currentTips = totalTips.get(order.merchantId) || 0;
+            totalTips.set(order.merchantId, currentTips + order.platformTip);
+        }
+    });
+    return totalTips;
+};
+
+/**
+ * Rules B, C, E, F: Processes receipts chronologically to calculate payment data.
+ * - Rule B: Total Pagado
+ * - Rule C: Saldo Anterior
+ * - Rule E: Último Pago
+ * - Rule F: Fecha Pago
+ */
+const calculatePaymentDataPerMerchant = (receipts: Receipt[], merchants: Omit<Merchant, 'lat' | 'lng'>[]) => {
+    const paymentData = new Map<string, {
+        totalPaid: number;
+        lastPaymentAmount: number | null;
+        lastPaymentDate: string;
+        previousBalance: number | null;
+    }>();
+
+    const sortedReceipts = [...receipts].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    for (const merchant of merchants) {
+        const merchantReceipts = sortedReceipts.filter(r => r.merchantId === merchant.id);
+        const totalPaid = merchantReceipts.reduce((sum, r) => sum + r.amountReceived, 0); // Rule B
+        const latestReceipt = merchantReceipts.length > 0 ? merchantReceipts[merchantReceipts.length - 1] : null;
+
+        paymentData.set(merchant.id, {
+            totalPaid,
+            lastPaymentAmount: latestReceipt ? latestReceipt.amountReceived : null, // Rule E
+            lastPaymentDate: latestReceipt ? latestReceipt.date : new Date(`${merchant.lastPaymentDate}T00:00:00`).toISOString(), // Rule F
+            previousBalance: latestReceipt ? latestReceipt.pendingBalance : null, // Rule C
+        });
+    }
+    return paymentData;
+};
+
+/**
+ * Rule D: Creates TipBalance objects by combining tip and payment data to calculate 'Saldo Actual'.
+ */
+const createTipBalances = (
+    merchants: Omit<Merchant, 'lat' | 'lng'>[],
+    totalTipsPerMerchant: Map<string, number>,
+    paymentDataPerMerchant: ReturnType<typeof calculatePaymentDataPerMerchant>,
+    allOrders: Order[]
+): TipBalance[] => {
+    return merchants.map(m => {
+        const totalTipsReceived = totalTipsPerMerchant.get(m.id) || 0;
+        const paymentData = paymentDataPerMerchant.get(m.id)!;
+        const currentBalance = totalTipsReceived - paymentData.totalPaid;
+
+        // Create a Date object for the payment, then zero out the time part for a clean date-only comparison.
+        const lastPaymentDateOnly = new Date(paymentData.lastPaymentDate);
+        lastPaymentDateOnly.setHours(0, 0, 0, 0);
+        const lastPaymentDayTimestamp = lastPaymentDateOnly.getTime();
+        
+        const newTipsSinceLastPayment = allOrders
+            .filter(o => {
+                if (o.merchantId !== m.id || ![OrderStatus.SHIPPED, OrderStatus.DELIVERED].includes(o.status)) {
+                    return false;
+                }
+                // Create the order date object, assuming local timezone (as T00:00:00 does).
+                // No need to zero out time as it's already at midnight.
+                const orderTimestamp = new Date(`${o.date}T00:00:00`).getTime();
+                
+                // Now we are comparing the start of the order day with the start of the payment day.
+                return orderTimestamp > lastPaymentDayTimestamp;
+            })
+            .reduce((sum, o) => sum + o.platformTip, 0);
+
+        return {
+            id: m.id,
+            totalTipsReceived,
+            totalTipsPaid: paymentData.totalPaid,
+            previousBalance: paymentData.previousBalance,
+            currentBalance: Math.max(0, currentBalance),
+            lastPaymentAmount: paymentData.lastPaymentAmount,
+            lastPaymentDate: paymentData.lastPaymentDate,
+            status: AccountStatus.ACTIVE, // Temporary status, updated in the next step.
+            newTipsSinceLastPayment,
+        };
+    });
+};
+
+/**
+ * Final step: Updates the master list of merchants with the calculated balances and statuses.
+ */
+const syncMerchantsWithBalances = (
+    rawMerchants: Omit<Merchant, 'lat' | 'lng'>[],
+    tipBalances: TipBalance[],
+    settings: AppSettings
+): Merchant[] => {
+    const merchantsWithGeo = rawMerchants.map(m => ({
+        ...JSON.parse(JSON.stringify(m)),
+        lat: 19.4326 + (Math.random() - 0.5) * 0.1,
+        lng: -99.1332 + (Math.random() - 0.5) * 0.1
+    }));
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    merchantsWithGeo.forEach(merchant => {
+        const balance = tipBalances.find(b => b.id === merchant.id);
+        if (!balance) return;
+
+        merchant.amountDue = balance.currentBalance;
+        merchant.lastPaymentDate = toDateString(new Date(balance.lastPaymentDate));
+        
+        if (balance.currentBalance > 0) {
+            merchant.tipsStatus = TipsStatus.PENDING;
+            const lastPaymentDate = new Date(balance.lastPaymentDate);
+            lastPaymentDate.setHours(0, 0, 0, 0);
+            const diffTime = today.getTime() - lastPaymentDate.getTime();
+            merchant.daysDue = Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
+
+            merchant.accountStatus = merchant.daysDue >= settings.financial.suspensionDays 
+                ? AccountStatus.SUSPENDED 
+                : AccountStatus.ACTIVE;
+        } else {
+            merchant.tipsStatus = TipsStatus.PAID;
+            merchant.daysDue = 0;
+            merchant.accountStatus = AccountStatus.ACTIVE;
+        }
+        balance.status = merchant.accountStatus; // Sync status back to balance object
+    });
+
+    return merchantsWithGeo;
+};
+
+
 // --- DATA CONSISTENCY LOGIC ---
 let merchants: Merchant[];
 let tipBalances: TipBalance[];
 let receipts: Receipt[];
 
 function initializeAndSyncData() {
-    // --- Step 1: Calculate lifetime Total Tips Received for each merchant (Rule A) ---
-    // This is the sum of `platformTip` from all orders that are shipped or delivered.
-    const totalTipsPerMerchant = new Map<string, number>();
-    orders.forEach(order => {
-        if ([OrderStatus.SHIPPED, OrderStatus.DELIVERED].includes(order.status)) {
-            const currentTips = totalTipsPerMerchant.get(order.merchantId) || 0;
-            totalTipsPerMerchant.set(order.merchantId, currentTips + order.platformTip);
-        }
-    });
-
-    // --- Step 2: Process receipts chronologically to get payment-related fields ---
-    const paymentDataPerMerchant = new Map<string, {
-        totalPaid: number;          // For Rule B
-        lastPaymentAmount: number | null; // For Rule E
-        lastPaymentDate: string;      // For Rule F
-        previousBalance: number | null;   // For Rule C
-    }>();
-
-    // Sort all receipts by date to correctly identify the latest one for each merchant
-    const sortedReceipts = [...receipts].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-    for (const merchant of rawMerchants) {
-        // Get all receipts for the current merchant, already sorted by date
-        const merchantReceipts = sortedReceipts.filter(r => r.merchantId === merchant.id);
-
-        // Rule B: Calculate the total amount paid from all receipts.
-        const totalPaid = merchantReceipts.reduce((sum, r) => sum + r.amountReceived, 0);
-        
-        // Get the single most recent receipt to extract last payment details.
-        const latestReceipt = merchantReceipts.length > 0 ? merchantReceipts[merchantReceipts.length - 1] : null;
-
-        paymentDataPerMerchant.set(merchant.id, {
-            totalPaid: totalPaid,
-            // Rule E: Get amount from the latest receipt.
-            lastPaymentAmount: latestReceipt ? latestReceipt.amountReceived : null,
-            // Rule F: Get date from the latest receipt, or fall back to the initial static date.
-            lastPaymentDate: latestReceipt ? latestReceipt.date : new Date(merchant.lastPaymentDate).toISOString(),
-            // Rule C: Get the pending balance *before* the last payment was made.
-            previousBalance: latestReceipt ? latestReceipt.pendingBalance : null
-        });
-    }
-
-    // --- Step 3: Combine tip data and payment data to create final TipBalance objects ---
-    tipBalances = rawMerchants.map(m => {
-        const totalTipsReceived = totalTipsPerMerchant.get(m.id) || 0;
-        const paymentData = paymentDataPerMerchant.get(m.id)!;
-
-        // Rule D: Saldo Actual is the lifetime total tips received minus the lifetime total paid.
-        const currentBalance = totalTipsReceived - paymentData.totalPaid;
-
-        return {
-            id: m.id,
-            totalTipsReceived: totalTipsReceived,
-            totalTipsPaid: paymentData.totalPaid,
-            previousBalance: paymentData.previousBalance,
-            currentBalance: Math.max(0, currentBalance), // A balance should not be negative.
-            lastPaymentAmount: paymentData.lastPaymentAmount,
-            lastPaymentDate: paymentData.lastPaymentDate,
-            status: AccountStatus.ACTIVE, // This is a temporary status; it will be updated in the next step.
-        };
-    });
+    // Rule A: Total Recibido
+    const totalTipsPerMerchant = calculateTotalTipsPerMerchant(orders);
     
-    // --- Step 4: Create a fresh, independent copy of the merchant data for modification ---
-    merchants = rawMerchants.map(m => ({
-        ...JSON.parse(JSON.stringify(m)),
-        lat: 19.4326 + (Math.random() - 0.5) * 0.1, // Add mock geo-coordinates
-        lng: -99.1332 + (Math.random() - 0.5) * 0.1
-    }));
-    
-    // --- Step 5: Update final merchant records with calculated balances and statuses ---
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Rules B, C, E, F: Total Pagado, Saldo Anterior, Último Pago, Fecha Pago
+    const paymentDataPerMerchant = calculatePaymentDataPerMerchant(receipts, rawMerchants);
 
-    merchants.forEach(merchant => {
-        const balance = tipBalances.find(b => b.id === merchant.id);
-        if (!balance) return; // Should not happen, but a good safeguard.
+    // Rule D: Saldo Actual and full TipBalance object creation
+    const calculatedTipBalances = createTipBalances(rawMerchants, totalTipsPerMerchant, paymentDataPerMerchant, orders);
+    tipBalances = calculatedTipBalances;
 
-        // Update merchant fields based on the definitive balance calculation.
-        merchant.amountDue = balance.currentBalance;
-        merchant.lastPaymentDate = toDateString(new Date(balance.lastPaymentDate));
-        merchant.tipsStatus = balance.currentBalance > 0 ? TipsStatus.PENDING : TipsStatus.PAID;
-        
-        // If there's a balance due, calculate days overdue and determine account status.
-        if (balance.currentBalance > 0) {
-            const lastPaymentDate = new Date(balance.lastPaymentDate);
-            lastPaymentDate.setHours(0, 0, 0, 0);
-
-            const diffTime = today.getTime() - lastPaymentDate.getTime();
-            const daysSincePayment = Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
-            
-            merchant.daysDue = daysSincePayment;
-
-            // Apply financial rules to set the final account status.
-            if (daysSincePayment >= settings.financial.suspensionDays) {
-                merchant.accountStatus = AccountStatus.SUSPENDED;
-            } else {
-                merchant.accountStatus = AccountStatus.ACTIVE;
-            }
-        } else {
-            // If balance is zero, the account is active and up-to-date.
-            merchant.daysDue = 0;
-            merchant.accountStatus = AccountStatus.ACTIVE;
-            merchant.tipsStatus = TipsStatus.PAID;
-        }
-
-        // Sync the account status back to the balance object for consistency.
-        balance.status = merchant.accountStatus;
-    });
+    // Final sync to update merchant list with all calculated data
+    const syncedMerchants = syncMerchantsWithBalances(rawMerchants, tipBalances, settings);
+    merchants = syncedMerchants;
 }
 
 
@@ -436,7 +491,7 @@ export const api = {
         await sleep(600);
         
         const filteredOrders = orders.filter(o => {
-            if (filters.date && o.date !== filters.date) return false;
+            if (filters.date && !o.date.startsWith(filters.date)) return false;
             if (filters.product && !o.products.some(p => p.name === filters.product)) return false;
             if (filters.location && o.location !== filters.location) return false;
             if (filters.status && o.status !== filters.status) return false;
@@ -519,7 +574,8 @@ export const api = {
             customerName: o.customerName,
             merchantName: merchants.find(m => m.id === o.merchantId)?.name ?? 'N/A',
             date: o.date,
-            amount: o.platformTip
+            amount: o.platformTip,
+            location: o.location,
         }));
     },
     async getAuditLogs(): Promise<AuditLog[]> {
@@ -716,7 +772,7 @@ export const api = {
         let data = historicalDataCache[metric] || [];
         
         if (dateFilter) {
-            return data.filter(d => d.date.includes(dateFilter));
+            return data.filter(d => d.date.startsWith(dateFilter));
         }
 
         return data;

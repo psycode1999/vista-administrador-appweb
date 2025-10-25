@@ -10,6 +10,7 @@ const ReceiptsView: React.FC = () => {
     const [selectedReceiptIds, setSelectedReceiptIds] = useState<string[]>([]);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [dateFilter, setDateFilter] = useState('');
 
     const fetchReceipts = async () => {
         setIsLoading(true);
@@ -26,10 +27,17 @@ const ReceiptsView: React.FC = () => {
     useEffect(() => {
         fetchReceipts();
     }, []);
+    
+    const filteredReceipts = useMemo(() => {
+        if (!dateFilter) {
+            return receipts;
+        }
+        return receipts.filter(receipt => receipt.date.startsWith(dateFilter));
+    }, [receipts, dateFilter]);
 
     const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.checked) {
-            setSelectedReceiptIds(receipts.map(r => r.id));
+            setSelectedReceiptIds(filteredReceipts.map(r => r.id));
         } else {
             setSelectedReceiptIds([]);
         }
@@ -66,14 +74,23 @@ const ReceiptsView: React.FC = () => {
         <div>
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Panel de Recibos</h1>
-                <button
-                    onClick={handleDeleteClick}
-                    disabled={selectedReceiptIds.length === 0}
-                    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                    <span>Eliminar</span>
-                </button>
+                 <div className="flex items-center space-x-4">
+                     <input
+                        type="text"
+                        placeholder="Filtrar por fecha (AAAA-MM-DD)..."
+                        value={dateFilter}
+                        onChange={(e) => setDateFilter(e.target.value)}
+                        className="bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                    <button
+                        onClick={handleDeleteClick}
+                        disabled={selectedReceiptIds.length === 0}
+                        className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        <span>Eliminar</span>
+                    </button>
+                </div>
             </div>
             
             <div className="overflow-x-auto bg-white dark:bg-gray-800 rounded-lg shadow">
@@ -85,8 +102,8 @@ const ReceiptsView: React.FC = () => {
                                     type="checkbox" 
                                     className="h-4 w-4 rounded text-primary-600 focus:ring-primary-500 border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700"
                                     onChange={handleSelectAll}
-                                    checked={receipts.length > 0 && selectedReceiptIds.length === receipts.length}
-                                    disabled={receipts.length === 0}
+                                    checked={filteredReceipts.length > 0 && selectedReceiptIds.length === filteredReceipts.length}
+                                    disabled={filteredReceipts.length === 0}
                                 />
                             </th>
                             {headers.map((header, index) => (
@@ -104,8 +121,8 @@ const ReceiptsView: React.FC = () => {
                                     <p className="mt-2 text-sm text-gray-500">Cargando recibos...</p>
                                 </td>
                             </tr>
-                        ) : receipts.length > 0 ? (
-                            receipts.map(receipt => (
+                        ) : filteredReceipts.length > 0 ? (
+                            filteredReceipts.map(receipt => (
                                <tr key={receipt.id} className={`${selectedReceiptIds.includes(receipt.id) ? 'bg-primary-50 dark:bg-gray-900/50' : ''} hover:bg-gray-50 dark:hover:bg-gray-700/50`}>
                                    <td className="px-6 py-4">
                                        <input type="checkbox" checked={selectedReceiptIds.includes(receipt.id)} onChange={() => handleSelectOne(receipt.id)} className="h-4 w-4 rounded text-primary-600 focus:ring-primary-500 border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700" />
@@ -123,7 +140,7 @@ const ReceiptsView: React.FC = () => {
                                </tr>
                             ))
                         ) : (
-                            <tr><td colSpan={headers.length + 1} className="text-center py-10 text-gray-500">No hay recibos disponibles.</td></tr>
+                            <tr><td colSpan={headers.length + 1} className="text-center py-10 text-gray-500">{dateFilter ? 'No hay recibos que coincidan con la fecha.' : 'No hay recibos disponibles.'}</td></tr>
                         )}
                     </tbody>
                 </table>

@@ -13,7 +13,6 @@ const AuditView: React.FC = () => {
             try {
                 const data = await api.getAuditLogs();
                 setLogs(data);
-            // Fix: Added missing curly braces to the catch block to correct the syntax error.
             } catch (error) {
                 console.error("Failed to fetch audit logs:", error);
             } finally {

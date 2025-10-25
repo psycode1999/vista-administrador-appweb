@@ -195,7 +195,6 @@ const MessagesView: React.FC<MessagesViewProps> = ({ contextId, setContextId }) 
 
     const handleAction = async (action: 'archive' | 'delete') => {
         setIsActionLoading(true);
-        // Fix: Use spread syntax to convert the Set of conversation IDs to an array, ensuring correct type inference as string[] for API calls.
         const ids = [...selectedConversationIds];
         try {
             if (action === 'archive') {

@@ -74,6 +74,7 @@ export interface TipBalance {
     lastPaymentAmount: number | null;
     lastPaymentDate: string; // ISO date string
     status: AccountStatus;
+    newTipsSinceLastPayment: number;
 }
 
 export enum OrderStatus {
@@ -152,6 +153,7 @@ export interface TipPayment {
     merchantName: string;
     date: string; // ISO date string
     amount: number;
+    location: string;
 }
 
 export interface AuditLog {

@@ -41,7 +41,9 @@ const MerchantOrdersPanel: React.FC<MerchantOrdersPanelProps> = ({ merchant, onC
             setIsLoading(true);
             try {
                 const data = await api.getOrdersByMerchant(merchant.merchantId);
-                setOrders(data.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+                // Correctly sort by creating timezone-aware date objects
+                const sortedData = data.sort((a, b) => new Date(`${b.date}T00:00:00`).getTime() - new Date(`${a.date}T00:00:00`).getTime());
+                setOrders(sortedData);
             } catch (error) {
                 console.error("Failed to fetch merchant orders:", error);
             } finally {
@@ -150,7 +152,7 @@ const MerchantOrdersPanel: React.FC<MerchantOrdersPanelProps> = ({ merchant, onC
                                 <p className="text-xs text-gray-500 dark:text-gray-400 font-mono">{order.id}</p>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm"><Badge color={getStatusBadgeColor(order.status)}>{order.status}</Badge></td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{new Date(order.date).toLocaleDateString('es-ES')}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{new Date(`${order.date}T00:00:00`).toLocaleDateString('es-ES')}</td>
                         </tr>
                     )}
                 />

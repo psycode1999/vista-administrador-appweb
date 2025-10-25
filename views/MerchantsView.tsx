@@ -80,7 +80,25 @@ const MerchantsView: React.FC<MerchantsViewProps> = ({ contextId, setContextId }
             
             const addressMatch = normalizeString(merchant.address).includes(normalizeString(filters.address));
             const accountStatusMatch = !filters.accountStatus || merchant.balance.status === filters.accountStatus;
-            const dateMatch = !filters.lastPaymentDate || new Date(merchant.balance.lastPaymentDate).toISOString().split('T')[0] === filters.lastPaymentDate;
+            
+            let dateMatch = true;
+            if (filters.lastPaymentDate) {
+                const parts = filters.lastPaymentDate.split('-');
+                
+                // Normalize month part if it's a single digit.
+                if (parts.length > 1 && parts[1] && parts[1].length === 1) {
+                    parts[1] = '0' + parts[1];
+                }
+                
+                // Normalize day part if it's a single digit.
+                if (parts.length > 2 && parts[2] && parts[2].length === 1) {
+                    parts[2] = '0' + parts[2];
+                }
+            
+                const normalizedDateFilter = parts.join('-');
+                dateMatch = merchant.lastPaymentDate.startsWith(normalizedDateFilter);
+            }
+
             return addressMatch && accountStatusMatch && dateMatch;
         });
 
@@ -181,7 +199,8 @@ const MerchantsView: React.FC<MerchantsViewProps> = ({ contextId, setContextId }
                             {Object.values(AccountStatus).map(s => <option key={s} value={s}>{s}</option>)}
                         </select>
                         <input
-                            type="date"
+                            type="text"
+                            placeholder="Filtrar por fecha (AAAA-MM-DD)..."
                             value={filters.lastPaymentDate}
                             onChange={(e) => handleFilterChange('lastPaymentDate', e.target.value)}
                             className="bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -195,6 +214,21 @@ const MerchantsView: React.FC<MerchantsViewProps> = ({ contextId, setContextId }
                     isLoading={isLoading}
                     renderRow={(merchant: MerchantWithBalance) => {
                         const { balance } = merchant;
+                         if (!balance) {
+                            return (
+                                <tr key={merchant.id}>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{merchant.name}</td>
+                                    <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-400">Sin datos de saldo</td>
+                                </tr>
+                            );
+                        }
+
+                        const saldoAnterior = balance.previousBalance ?? 0;
+                        const ultimoPago = balance.lastPaymentAmount ?? 0;
+                        const nuevasPropinas = balance.newTipsSinceLastPayment;
+                        const diferencia = saldoAnterior - ultimoPago;
+                        const displaySaldoActual = nuevasPropinas + diferencia;
+                        
                         return (
                              <tr
                                 key={merchant.id}
@@ -207,90 +241,70 @@ const MerchantsView: React.FC<MerchantsViewProps> = ({ contextId, setContextId }
                                 }`}
                             >
                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{merchant.name}</td>
-                                {balance ? (
-                                    <>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">${balance.totalTipsReceived.toFixed(2)}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">${balance.totalTipsPaid.toFixed(2)}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">${(balance.previousBalance ?? 0).toFixed(2)}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                            <div className="font-bold text-gray-900 dark:text-white">${balance.currentBalance.toFixed(2)}</div>
-                                            {(() => {
-                                                if (balance.previousBalance !== null && balance.lastPaymentAmount !== null) {
-                                                    // Difference = Saldo Anterior - Último Pago
-                                                    const difference = balance.previousBalance - balance.lastPaymentAmount;
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">${balance.totalTipsReceived.toFixed(2)}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">${balance.totalTipsPaid.toFixed(2)}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">${saldoAnterior.toFixed(2)}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                    <div className="font-bold text-gray-900 dark:text-white">${displaySaldoActual.toFixed(2)}</div>
+                                    {diferencia > 0 && (
+                                        <div className="text-xs font-medium text-green-500">+RD{diferencia.toFixed(2)}</div>
+                                    )}
+                                     {diferencia < 0 && (
+                                        <div className="text-xs font-medium text-red-500">-RD${Math.abs(diferencia).toFixed(2)}</div>
+                                    )}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">${ultimoPago.toFixed(2)}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{new Date(balance.lastPaymentDate).toLocaleDateString('es-ES')}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                    {(() => {
+                                        if (!balance) return null;
+
+                                        const lastPaymentDate = new Date(balance.lastPaymentDate);
+                                        const today = new Date();
+                                        lastPaymentDate.setHours(0, 0, 0, 0);
+                                        today.setHours(0, 0, 0, 0);
+                                        const diffTime = today.getTime() - lastPaymentDate.getTime();
+                                        const daysSincePayment = Math.floor(diffTime / (1000 * 60 * 60 * 24));
                                         
-                                                    // Don't show anything for perfectly balanced payments.
-                                                    if (Math.abs(difference) < 0.01) return null;
-                                        
-                                                    if (difference > 0) { // Positive difference = Faltante (shortage). User wants GREEN with PLUS.
-                                                        return (
-                                                            <div className="text-xs text-green-500 font-medium">
-                                                                + ${difference.toFixed(2)}
-                                                            </div>
-                                                        );
-                                                    } else { // Negative difference = Sobrante (surplus). User wants RED with MINUS.
-                                                        return (
-                                                            <div className="text-xs text-red-500 font-medium">
-                                                                - ${Math.abs(difference).toFixed(2)}
-                                                            </div>
-                                                        );
-                                                    }
-                                                }
-                                                return null;
-                                            })()}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">${(balance.lastPaymentAmount ?? 0).toFixed(2)}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{new Date(balance.lastPaymentDate).toLocaleDateString('es-ES')}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                            {(() => {
-                                                if (!balance) return null;
+                                        let statusText: string;
+                                        let statusColorClass: string;
 
-                                                const lastPaymentDate = new Date(balance.lastPaymentDate);
-                                                const today = new Date();
-                                                lastPaymentDate.setHours(0, 0, 0, 0);
-                                                today.setHours(0, 0, 0, 0);
-                                                const diffTime = today.getTime() - lastPaymentDate.getTime();
-                                                const daysSincePayment = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-                                                
-                                                let statusText: string;
-                                                let statusColorClass: string;
+                                        const hasPendingBalance = balance.currentBalance > 0;
 
-                                                if (daysSincePayment >= 60) {
-                                                    statusText = 'Suspendida';
-                                                    statusColorClass = 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
-                                                } else if (daysSincePayment >= 45) {
-                                                    statusText = 'Pendiente';
-                                                    statusColorClass = 'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-300';
-                                                } else if (daysSincePayment >= 30) {
-                                                    statusText = 'Pendiente';
-                                                    statusColorClass = 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300';
-                                                } else if (daysSincePayment >= 15) {
-                                                    statusText = 'Pendiente';
-                                                    statusColorClass = 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
-                                                } else {
-                                                    statusText = 'Activa';
-                                                    statusColorClass = 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
-                                                }
+                                        if (!hasPendingBalance || daysSincePayment < 15) {
+                                            statusText = 'Activa';
+                                            statusColorClass = 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
+                                        } else { // Has a pending balance and it's been 15 days or more
+                                            if (daysSincePayment >= 60) { // Condición 4
+                                                statusText = 'Suspendida';
+                                                statusColorClass = 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
+                                            } else if (daysSincePayment >= 45) { // Condición 3
+                                                statusText = 'Pendiente';
+                                                statusColorClass = 'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-300';
+                                            } else if (daysSincePayment >= 30) { // Condición 2
+                                                statusText = 'Pendiente';
+                                                statusColorClass = 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300';
+                                            } else { // Condición 1 (daysSincePayment >= 15)
+                                                statusText = 'Pendiente';
+                                                statusColorClass = 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
+                                            }
+                                        }
 
-                                                const showDate = daysSincePayment >= 15;
-                                                const dateString = `hace ${daysSincePayment} día${daysSincePayment !== 1 ? 's' : ''}`;
+                                        const showDate = hasPendingBalance && daysSincePayment >= 15;
+                                        const dateString = `hace ${daysSincePayment} día${daysSincePayment !== 1 ? 's' : ''}`;
 
-                                                return (
-                                                    <div className="flex items-center space-x-2">
-                                                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusColorClass}`}>
-                                                            {statusText}
-                                                        </span>
-                                                        {showDate && (
-                                                            <span className="text-gray-500 dark:text-gray-400">{dateString}</span>
-                                                        )}
-                                                    </div>
-                                                );
-                                            })()}
-                                        </td>
-                                    </>
-                                ) : (
-                                    <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-400">Sin datos de saldo</td>
-                                )}
+                                        return (
+                                            <div className="flex items-center space-x-2">
+                                                <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusColorClass}`}>
+                                                    {statusText}
+                                                </span>
+                                                {showDate && (
+                                                    <span className="text-gray-500 dark:text-gray-400">{dateString}</span>
+                                                )}
+                                            </div>
+                                        );
+                                    })()}
+                                </td>
                             </tr>
                         );
                     }}
