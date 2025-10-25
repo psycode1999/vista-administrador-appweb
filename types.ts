@@ -25,7 +25,9 @@ export interface Notification {
 
 export enum AccountStatus {
     ACTIVE = 'Activa',
+    PENDING = 'Pendiente',
     SUSPENDED = 'Suspendida',
+    DELETION_PENDING = 'Pendiente de Eliminación',
 }
 
 export enum TipsStatus {
@@ -45,6 +47,7 @@ export interface Merchant {
     daysDue: number;
     amountDue: number;
     accountStatus: AccountStatus;
+    deletionScheduledAt?: string;
 }
 
 export enum ActivityStatus {
@@ -124,6 +127,7 @@ export interface MerchantSummaryFilters {
     product: string;
     location: string;
     status: OrderStatus | '';
+    userLocation?: { lat: number; lng: number };
 }
 
 
@@ -230,6 +234,13 @@ export interface Conversation {
     lastMessage: string;
     lastMessageTimestamp: string;
     unreadCount: number;
+}
+
+export interface MarketplaceUser {
+    id: string;
+    name: string;
+    avatarUrl: string;
+    role: Role.CUSTOMER | Role.MERCHANT;
 }
 
 // Settings

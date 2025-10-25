@@ -2,7 +2,7 @@ import {
   Notification, Merchant, TipsStatus, AccountStatus, MerchantProfile,
   ActivityStatus, TipBalance, MerchantOrderSummary, Order, OrderStatus, OrderFilterOptions,
   MerchantSummaryFilters, Product, ProductCategory, TipPayment, AuditLog, Receipt, ReceiptStatus, DashboardStats,
-  DashboardMetricKey, HistoricalDataPoint, DashboardStat, Conversation, Message, Role, MessageStatus, AppSettings
+  DashboardMetricKey, HistoricalDataPoint, DashboardStat, Conversation, Message, Role, MessageStatus, AppSettings, MarketplaceUser
 } from '../types';
 
 // Helper to create a date string in YYY-MM-DD format
@@ -36,13 +36,13 @@ let settings: AppSettings = {
     }
 };
 
-const rawMerchants: Omit<Merchant, 'lat' | 'lng'>[] = [
-    { id: 'MERCH-1', name: 'Café del Sol', address: 'Av. Siempre Viva 123', tipPerTransaction: 0.25, lastPaymentDate: '2023-10-10', tipsStatus: TipsStatus.PENDING, daysDue: 15, amountDue: 120.50, accountStatus: AccountStatus.ACTIVE },
+let rawMerchants: Omit<Merchant, 'lat' | 'lng'>[] = [
+    { id: 'MERCH-1', name: 'Café del Sol', address: 'Av. Siempre Viva 123', tipPerTransaction: 0.25, lastPaymentDate: '2023-10-10', tipsStatus: TipsStatus.PENDING, daysDue: 15, amountDue: 120.50, accountStatus: AccountStatus.PENDING },
     { id: 'MERCH-2', name: 'Libros y Letras', address: 'Calle Falsa 456', tipPerTransaction: 0.15, lastPaymentDate: '2023-11-01', tipsStatus: TipsStatus.PAID, daysDue: 0, amountDue: 0, accountStatus: AccountStatus.ACTIVE },
-    { id: 'MERCH-3', name: 'Ropa Urbana Co.', address: 'Blvd. de los Sueños 789', tipPerTransaction: 0.20, lastPaymentDate: '2023-09-05', tipsStatus: TipsStatus.PENDING, daysDue: 50, amountDue: 350.75, accountStatus: AccountStatus.ACTIVE },
+    { id: 'MERCH-3', name: 'Ropa Urbana Co.', address: 'Blvd. de los Sueños 789', tipPerTransaction: 0.20, lastPaymentDate: '2023-09-05', tipsStatus: TipsStatus.PENDING, daysDue: 50, amountDue: 350.75, accountStatus: AccountStatus.PENDING },
     { id: 'MERCH-4', name: 'TecnoGadgets', address: 'Paseo de la Reforma 101', tipPerTransaction: 0.30, lastPaymentDate: '2023-08-20', tipsStatus: TipsStatus.PENDING, daysDue: 66, amountDue: 890.00, accountStatus: AccountStatus.SUSPENDED },
     { id: 'MERCH-5', name: 'Verde Fresco', address: 'Insurgentes Sur 202', tipPerTransaction: 0.10, lastPaymentDate: '2023-10-25', tipsStatus: TipsStatus.PENDING, daysDue: 5, amountDue: 45.20, accountStatus: AccountStatus.ACTIVE },
-    { id: 'MERCH-6', name: 'El Rincón del Gourmet', address: 'Plaza de la Constitución 1', tipPerTransaction: 0.25, lastPaymentDate: '2023-09-15', tipsStatus: TipsStatus.PENDING, daysDue: 40, amountDue: 210.00, accountStatus: AccountStatus.ACTIVE },
+    { id: 'MERCH-6', name: 'El Rincón del Gourmet', address: 'Plaza de la Constitución 1', tipPerTransaction: 0.25, lastPaymentDate: '2023-09-15', tipsStatus: TipsStatus.PENDING, daysDue: 40, amountDue: 210.00, accountStatus: AccountStatus.PENDING },
     { id: 'MERCH-7', name: 'La Esquina Creativa', address: 'Calle de la Imaginación 303', tipPerTransaction: 0.18, lastPaymentDate: toDateString(new Date()), tipsStatus: TipsStatus.PAID, daysDue: 0, amountDue: 0, accountStatus: AccountStatus.ACTIVE },
 ];
 
@@ -251,6 +251,11 @@ const syncMerchantsWithBalances = (
         merchant.amountDue = balance.currentBalance;
         merchant.lastPaymentDate = toDateString(new Date(balance.lastPaymentDate));
         
+        if (merchant.accountStatus === AccountStatus.DELETION_PENDING) {
+            balance.status = AccountStatus.DELETION_PENDING;
+            return;
+        }
+
         if (balance.currentBalance > 0) {
             merchant.tipsStatus = TipsStatus.PENDING;
             const lastPaymentDate = new Date(balance.lastPaymentDate);
@@ -258,15 +263,19 @@ const syncMerchantsWithBalances = (
             const diffTime = today.getTime() - lastPaymentDate.getTime();
             merchant.daysDue = Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
 
-            merchant.accountStatus = merchant.daysDue >= settings.financial.suspensionDays 
-                ? AccountStatus.SUSPENDED 
-                : AccountStatus.ACTIVE;
+            if (merchant.daysDue >= settings.financial.suspensionDays) {
+                merchant.accountStatus = AccountStatus.SUSPENDED;
+            } else if (merchant.daysDue >= settings.financial.dueWarningDays) {
+                merchant.accountStatus = AccountStatus.PENDING;
+            } else {
+                merchant.accountStatus = AccountStatus.ACTIVE;
+            }
         } else {
             merchant.tipsStatus = TipsStatus.PAID;
             merchant.daysDue = 0;
             merchant.accountStatus = AccountStatus.ACTIVE;
         }
-        balance.status = merchant.accountStatus; // Sync status back to balance object
+        balance.status = merchant.accountStatus;
     });
 
     return merchantsWithGeo;
@@ -428,6 +437,67 @@ const generateAllHistoricalData = () => {
     }
 };
 
+// Helper function to find or create a conversation for a merchant
+const findOrCreateMerchantConversation = (merchantId: string): Conversation => {
+    let conversation = conversations.find(c => c.userId === merchantId && c.role === Role.MERCHANT);
+    if (!conversation) {
+        const merchant = merchants.find(m => m.id === merchantId);
+        if (!merchant) throw new Error("Merchant not found for conversation");
+        conversation = {
+            id: `CONV-MERCH-${merchantId.replace('MERCH-', '')}`,
+            userId: merchantId,
+            userName: merchant.name,
+            userAvatarUrl: `https://i.pravatar.cc/150?u=${merchant.name.replace(/\s/g, '')}`,
+            role: Role.MERCHANT,
+            lastMessage: '',
+            lastMessageTimestamp: new Date().toISOString(),
+            unreadCount: 0,
+        };
+        conversations.unshift(conversation);
+        messages[conversation.id] = [];
+    }
+    return conversation;
+};
+
+// --- NEW DATA FOR BROADCAST ---
+const allCustomersForBroadcast: MarketplaceUser[] = Array.from(new Set(orders.map(o => o.customerName)))
+    .map((name, index) => ({
+        id: `CUST-${index + 1}`,
+        name,
+        avatarUrl: `https://i.pravatar.cc/150?u=${name.toLowerCase().replace(/\s/g, '')}`,
+        role: Role.CUSTOMER,
+    }));
+
+const allMerchantsForBroadcast: MarketplaceUser[] = merchants.map(m => ({
+    id: m.id,
+    name: m.name,
+    avatarUrl: `https://i.pravatar.cc/150?u=${m.name.replace(/\s/g, '')}`,
+    role: Role.MERCHANT,
+}));
+
+// Helper to find or create conversations for broadcast targets
+const findOrCreateConversationForUser = (user: MarketplaceUser): Conversation => {
+    let conversation = conversations.find(c => c.userId === user.id);
+    if (!conversation) {
+        const rolePrefix = user.role === Role.CUSTOMER ? 'CUST' : 'MERCH';
+        const idSuffix = user.id.split('-')[1] || Date.now();
+        conversation = {
+            id: `CONV-${rolePrefix}-${idSuffix}`,
+            userId: user.id,
+            userName: user.name,
+            userAvatarUrl: user.avatarUrl,
+            role: user.role,
+            lastMessage: '',
+            lastMessageTimestamp: new Date().toISOString(),
+            unreadCount: 0,
+        };
+        conversations.unshift(conversation);
+        messages[conversation.id] = [];
+    }
+    return conversation;
+};
+
+
 
 // --- API FUNCTIONS ---
 export const api = {
@@ -460,6 +530,26 @@ export const api = {
     },
     async getMerchants(): Promise<Merchant[]> {
         await sleep(500);
+        const now = new Date();
+        const threeDaysInMs = 3 * 24 * 60 * 60 * 1000;
+
+        // Simulate automatic deletion by filtering the in-memory array
+        const merchantsToKeep = merchants.filter(m => {
+            if (m.accountStatus === AccountStatus.DELETION_PENDING && m.deletionScheduledAt) {
+                const scheduledDate = new Date(m.deletionScheduledAt);
+                return (now.getTime() - scheduledDate.getTime()) < threeDaysInMs;
+            }
+            return true;
+        });
+
+        // If any merchants were "deleted", update the main array for subsequent API calls
+        if (merchantsToKeep.length < merchants.length) {
+            merchants = merchantsToKeep;
+            // Also update the raw source to prevent them from being re-added on a full sync
+            const keptIds = new Set(merchantsToKeep.map(m => m.id));
+            rawMerchants = rawMerchants.filter(m => keptIds.has(m.id));
+        }
+
         return merchants;
     },
     async getMerchantProfile(id: string): Promise<MerchantProfile> {
@@ -490,10 +580,45 @@ export const api = {
     async getMerchantOrderSummaries(filters: MerchantSummaryFilters): Promise<MerchantOrderSummary[]> {
         await sleep(600);
         
-        const filteredOrders = orders.filter(o => {
+        let applicableOrders = orders;
+        
+        if (filters.userLocation) {
+            const targetMerchantIds = new Set<string>();
+            const NEARBY_RADIUS_KM = 5; // 5km radius for "nearby"
+
+            const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+                // Haversine formula
+                const R = 6371; // Radius of the earth in km
+                const deg2rad = (deg: number) => deg * (Math.PI / 180);
+                const dLat = deg2rad(lat2 - lat1);
+                const dLon = deg2rad(lon2 - lon1);
+                const a =
+                    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                    Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
+                    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+                return R * c;
+            };
+
+            merchants.forEach(merchant => {
+                const distance = getDistance(
+                    filters.userLocation!.lat,
+                    filters.userLocation!.lng,
+                    merchant.lat,
+                    merchant.lng
+                );
+                if (distance <= NEARBY_RADIUS_KM) {
+                    targetMerchantIds.add(merchant.id);
+                }
+            });
+            applicableOrders = orders.filter(o => targetMerchantIds.has(o.merchantId));
+        }
+        
+        const filteredOrders = applicableOrders.filter(o => {
             if (filters.date && !o.date.startsWith(filters.date)) return false;
             if (filters.product && !o.products.some(p => p.name === filters.product)) return false;
-            if (filters.location && o.location !== filters.location) return false;
+            // Location string filter is ignored if userLocation is active
+            if (!filters.userLocation && filters.location && o.location !== filters.location) return false;
             if (filters.status && o.status !== filters.status) return false;
             return true;
         });
@@ -748,7 +873,7 @@ export const api = {
         };
         
         const totalDueData = historicalDataCache['totalDue'];
-        const totalDueValue = totalDueData && totalDueData.length > 0 ? totalDueData[totalDueData.length-1].value : 0;
+        const totalDueValue = totalDueData && totalDueData.length > 0 ? totalDueData[totalDueData.length - 1].value : 0;
 
         const stats: DashboardStats = {
             currentRevenue: getStatFromCache('currentRevenue'),
@@ -776,5 +901,91 @@ export const api = {
         }
 
         return data;
-    }
+    },
+    
+    async disableMerchant(merchantId: string): Promise<void> {
+        await sleep(500);
+        const rawMerchant = rawMerchants.find(m => m.id === merchantId);
+        if (rawMerchant) {
+            // Force a very old payment date to guarantee suspension status via calculation
+            rawMerchant.lastPaymentDate = '1970-01-01';
+            initializeAndSyncData(); // Recalculate all data based on the change
+            
+            const conversation = findOrCreateMerchantConversation(merchantId);
+            await this.sendMessage(conversation.id, 'Su cuenta ha sido inhabilitada por incumplir las políticas de la plataforma, comuníquese con servicio al cliente para resolver este problema.');
+        } else {
+            throw new Error("Merchant not found");
+        }
+    },
+
+    async scheduleMerchantDeletion(merchantId: string): Promise<void> {
+        await sleep(500);
+        const rawMerchant = rawMerchants.find(m => m.id === merchantId) as Merchant | undefined;
+        if (rawMerchant) {
+            rawMerchant.accountStatus = AccountStatus.DELETION_PENDING;
+            rawMerchant.deletionScheduledAt = new Date().toISOString();
+            initializeAndSyncData(); // Recalculate all data based on the change
+
+            const conversation = findOrCreateMerchantConversation(merchantId);
+            await this.sendMessage(conversation.id, 'Su cuenta ha sido eliminada por incumplir las políticas de la plataforma.');
+        } else {
+            throw new Error("Merchant not found");
+        }
+    },
+    async cancelMerchantDeletion(merchantId: string): Promise<void> {
+        await sleep(500);
+        const rawMerchant = rawMerchants.find(m => m.id === merchantId) as Merchant | undefined;
+        if (rawMerchant) {
+            rawMerchant.accountStatus = AccountStatus.ACTIVE;
+            delete rawMerchant.deletionScheduledAt;
+            // Reset their payment date to avoid being immediately suspended again
+            rawMerchant.lastPaymentDate = toDateString(new Date());
+            initializeAndSyncData();
+
+            const conversation = findOrCreateMerchantConversation(merchantId);
+            await this.sendMessage(conversation.id, 'La eliminación programada de su cuenta ha sido cancelada. Su cuenta ha sido reactivada.');
+        } else {
+            throw new Error("Merchant not found");
+        }
+    },
+    async getOrCreateConversationForMerchant(merchantId: string): Promise<Conversation> {
+        await sleep(200);
+        return findOrCreateMerchantConversation(merchantId);
+    },
+    async getAllCustomersForBroadcast(): Promise<MarketplaceUser[]> {
+        await sleep(300);
+        return allCustomersForBroadcast;
+    },
+
+    async getAllMerchantsForBroadcast(): Promise<MarketplaceUser[]> {
+        await sleep(300);
+        return allMerchantsForBroadcast;
+    },
+
+    async sendBroadcastMessage(recipients: MarketplaceUser[], text: string): Promise<void> {
+        await sleep(1000); // Simulate network delay for a bulk operation
+        for (const recipient of recipients) {
+            const conversation = findOrCreateConversationForUser(recipient);
+            // We can reuse the sendMessage logic internally, but need to adapt it
+            const newMessage: Message = {
+                id: `MSG-${Date.now()}-${Math.random()}`,
+                conversationId: conversation.id,
+                sender: 'admin',
+                text,
+                timestamp: new Date().toISOString(),
+                status: MessageStatus.DELIVERED,
+            };
+            if (messages[conversation.id]) {
+                messages[conversation.id].push(newMessage);
+            } else {
+                messages[conversation.id] = [newMessage];
+            }
+            
+            const convIndex = conversations.findIndex(c => c.id === conversation.id);
+            if (convIndex > -1) {
+                conversations[convIndex].lastMessage = text;
+                conversations[convIndex].lastMessageTimestamp = newMessage.timestamp;
+            }
+        }
+    },
 };

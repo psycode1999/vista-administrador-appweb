@@ -66,7 +66,7 @@ const Main = () => {
       case 'Dashboard':
         return <DashboardView />;
       case 'Merchants':
-        return <MerchantsView contextId={contextId} setContextId={setContextId} />;
+        return <MerchantsView contextId={contextId} setContextId={setContextId} navigate={navigate} />;
       case 'Orders':
         return <OrdersView contextId={contextId} setContextId={setContextId} />;
       case 'Products':
@@ -102,9 +102,9 @@ const Main = () => {
         setCollapsed={setIsSidebarCollapsed}
         notifications={notifications}
       />
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col">
         <Header />
-        <main className="flex-1 overflow-x-auto overflow-y-auto bg-gray-100 dark:bg-gray-900 p-6">
+        <main className="flex-1 overflow-y-auto bg-gray-100 dark:bg-gray-900 p-6">
           {renderView()}
         </main>
       </div>

@@ -67,8 +67,43 @@ const OrdersView: React.FC<OrdersViewProps> = ({ contextId, setContextId }) => {
         }
     }, [contextId, setContextId, summaries]);
 
-    const handleFilterChange = (filterName: keyof MerchantSummaryFilters, value: string) => {
-        setFilters(prev => ({ ...prev, [filterName]: value }));
+    const handleFilterChange = (filterName: keyof Omit<MerchantSummaryFilters, 'userLocation'>, value: string | OrderStatus) => {
+        const newFilters: MerchantSummaryFilters = { ...filters, [filterName]: value };
+        if (filterName === 'location' && value !== '__NEARBY__') {
+            delete newFilters.userLocation;
+        }
+        setFilters(newFilters);
+    };
+
+    const handleLocationSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const value = e.target.value;
+        if (value === '__NEARBY__') {
+            if (!navigator.geolocation) {
+                alert('La geolocalización no es soportada por este navegador.');
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const { latitude, longitude } = position.coords;
+                    setFilters(prev => ({
+                        ...prev,
+                        location: '__NEARBY__',
+                        userLocation: { lat: latitude, lng: longitude },
+                    }));
+                },
+                (error) => {
+                    console.error("Error getting location", error);
+                    alert('No se pudo obtener la ubicación. Por favor, revisa los permisos.');
+                    // Reset dropdown if permission denied and it was on "Nearby"
+                    if (filters.location === '__NEARBY__') {
+                       handleFilterChange('location', '');
+                    }
+                }
+            );
+        } else {
+            handleFilterChange('location', value);
+        }
     };
 
     const handleSelectOrder = (order: Order) => {
@@ -109,10 +144,11 @@ const OrdersView: React.FC<OrdersViewProps> = ({ contextId, setContextId }) => {
                  </select>
                  <select 
                     value={filters.location} 
-                    onChange={e => handleFilterChange('location', e.target.value)} 
+                    onChange={handleLocationSelectChange} 
                     className="bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
                     <option value="">Todas las locaciones</option>
+                    <option value="__NEARBY__">Cerca de mí</option>
                     {filterOptions.locations.map(l => <option key={l} value={l}>{l}</option>)}
                  </select>
                  <select 

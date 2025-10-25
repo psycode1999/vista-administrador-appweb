@@ -17,9 +17,10 @@ interface MerchantFilters {
 interface MerchantsViewProps {
     contextId: string | null;
     setContextId: (id: string | null) => void;
+    navigate: (view: string, id?: string) => void;
 }
 
-const MerchantsView: React.FC<MerchantsViewProps> = ({ contextId, setContextId }) => {
+const MerchantsView: React.FC<MerchantsViewProps> = ({ contextId, setContextId, navigate }) => {
     const [data, setData] = useState<MerchantWithBalance[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [selectedMerchantId, setSelectedMerchantId] = useState<string | null>(null);
@@ -213,7 +214,7 @@ const MerchantsView: React.FC<MerchantsViewProps> = ({ contextId, setContextId }
                     data={filteredAndSortedMerchants}
                     isLoading={isLoading}
                     renderRow={(merchant: MerchantWithBalance) => {
-                        const { balance } = merchant;
+                        const { balance, daysDue } = merchant;
                          if (!balance) {
                             return (
                                 <tr key={merchant.id}>
@@ -259,47 +260,47 @@ const MerchantsView: React.FC<MerchantsViewProps> = ({ contextId, setContextId }
                                     {(() => {
                                         if (!balance) return null;
 
-                                        const lastPaymentDate = new Date(balance.lastPaymentDate);
-                                        const today = new Date();
-                                        lastPaymentDate.setHours(0, 0, 0, 0);
-                                        today.setHours(0, 0, 0, 0);
-                                        const diffTime = today.getTime() - lastPaymentDate.getTime();
-                                        const daysSincePayment = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-                                        
                                         let statusText: string;
                                         let statusColorClass: string;
-
-                                        const hasPendingBalance = balance.currentBalance > 0;
-
-                                        if (!hasPendingBalance || daysSincePayment < 15) {
-                                            statusText = 'Activa';
-                                            statusColorClass = 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
-                                        } else { // Has a pending balance and it's been 15 days or more
-                                            if (daysSincePayment >= 60) { // Condición 4
+                                        let showDate = false;
+                                        let dateString = '';
+                                        
+                                        switch (balance.status) {
+                                            case AccountStatus.DELETION_PENDING:
+                                                statusText = 'Eliminación';
+                                                statusColorClass = 'bg-gray-200 text-gray-800 dark:bg-gray-600 dark:text-gray-300';
+                                                break;
+                                            case AccountStatus.SUSPENDED:
                                                 statusText = 'Suspendida';
                                                 statusColorClass = 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
-                                            } else if (daysSincePayment >= 45) { // Condición 3
+                                                break;
+                                            case AccountStatus.PENDING:
                                                 statusText = 'Pendiente';
-                                                statusColorClass = 'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-300';
-                                            } else if (daysSincePayment >= 30) { // Condición 2
-                                                statusText = 'Pendiente';
-                                                statusColorClass = 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300';
-                                            } else { // Condición 1 (daysSincePayment >= 15)
-                                                statusText = 'Pendiente';
-                                                statusColorClass = 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
-                                            }
+                                                if (daysDue >= 45) {
+                                                    statusColorClass = 'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-300';
+                                                } else if (daysDue >= 30) {
+                                                    statusColorClass = 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300';
+                                                } else { // >= 15
+                                                    statusColorClass = 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
+                                                }
+                                                showDate = true;
+                                                dateString = `hace ${daysDue} día${daysDue !== 1 ? 's' : ''}`;
+                                                break;
+                                            case AccountStatus.ACTIVE:
+                                            default:
+                                                statusText = 'Activa';
+                                                statusColorClass = 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
+                                                break;
                                         }
 
-                                        const showDate = hasPendingBalance && daysSincePayment >= 15;
-                                        const dateString = `hace ${daysSincePayment} día${daysSincePayment !== 1 ? 's' : ''}`;
 
                                         return (
                                             <div className="flex items-center space-x-2">
-                                                <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusColorClass}`}>
+                                                <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${statusColorClass}`}>
                                                     {statusText}
                                                 </span>
                                                 {showDate && (
-                                                    <span className="text-gray-500 dark:text-gray-400">{dateString}</span>
+                                                    <span className="text-xs text-gray-500 dark:text-gray-400">{dateString}</span>
                                                 )}
                                             </div>
                                         );
@@ -310,10 +311,12 @@ const MerchantsView: React.FC<MerchantsViewProps> = ({ contextId, setContextId }
                     }}
                 />
             </div>
-            <MerchantDetailPanel 
-                merchantId={selectedMerchantId} 
-                onClose={() => setSelectedMerchantId(null)} 
+            
+            <MerchantDetailPanel
+                merchantId={selectedMerchantId}
+                onClose={() => setSelectedMerchantId(null)}
                 onDataUpdated={fetchData}
+                navigate={navigate}
             />
         </div>
     );

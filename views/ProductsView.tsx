@@ -124,7 +124,7 @@ const ProductsView: React.FC = () => {
             <h1 className="text-3xl font-bold mb-6 text-gray-800 dark:text-white">Catálogo de Productos</h1>
             
             <div className="mb-6 p-4 bg-white dark:bg-gray-800 rounded-lg shadow space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
                     <input type="text" name="name" placeholder="Filtrar por producto..." value={filters.name} onChange={handleFilterChange} className="bg-gray-100 dark:bg-gray-700 border-gray-200 dark:border-gray-600 rounded-lg text-sm px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500" />
                     <input type="text" name="brand" placeholder="Filtrar por marca..." value={filters.brand} onChange={handleFilterChange} className="bg-gray-100 dark:bg-gray-700 border-gray-200 dark:border-gray-600 rounded-lg text-sm px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500" />
                     <input type="number" name="minPrice" placeholder="Precio mín." value={filters.minPrice} onChange={handleFilterChange} className="bg-gray-100 dark:bg-gray-700 border-gray-200 dark:border-gray-600 rounded-lg text-sm px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500" />
@@ -136,7 +136,7 @@ const ProductsView: React.FC = () => {
                 </div>
             </div>
 
-            <div className="mb-6 flex space-x-3">
+            <div className="mb-6 flex flex-col sm:flex-row gap-2">
                 <button onClick={handleAddClick} className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg shadow-sm">Agregar producto</button>
                 <button onClick={handleEditClick} disabled={selectedProductIds.length !== 1} className="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white font-medium rounded-lg shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">Editar producto</button>
                 <button onClick={handleDeleteClick} disabled={selectedProductIds.length === 0} className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">Eliminar producto seleccionado</button>
