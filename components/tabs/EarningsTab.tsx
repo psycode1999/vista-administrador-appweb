@@ -83,8 +83,13 @@ const EarningsTab: React.FC<EarningsTabProps> = ({ merchantId }) => {
                                 itemStyle={{ color: '#c7d2fe' }}
                                 labelStyle={{ fontWeight: 'bold', color: '#ffffff' }}
                                 // FIX: The 'value' from recharts' formatter can be of an uncertain type.
-                                // Used Number() for safe conversion before calling toFixed to prevent runtime errors.
-                                formatter={(value: unknown) => [`$${Number(value).toFixed(2)}`, 'Ganancias']}
+                                // We check if it's a valid number before formatting to prevent runtime errors.
+                                formatter={(value: unknown) => {
+                                    if (typeof value === 'number' && !isNaN(value)) {
+                                      return [`$${value.toFixed(2)}`, 'Ganancias'];
+                                    }
+                                    return [`$0.00`, 'Ganancias'];
+                                }}
                             />
                             <Bar dataKey="earnings" name="Ganancias" fill="#6366f1" />
                         </BarChart>

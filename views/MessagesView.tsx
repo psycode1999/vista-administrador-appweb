@@ -39,6 +39,13 @@ const ArrowLeftIcon = (props: React.SVGProps<SVGSVGElement>) => (
     </svg>
 );
 
+{/* FIX: Define MessageIcon to resolve "Cannot find name 'MessageIcon'" error. */}
+const MessageIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+    </svg>
+);
+
 interface MessagesViewProps {
     contextId: string | null;
     setContextId: (id: string | null) => void;
@@ -293,4 +300,207 @@ const MessagesView: React.FC<MessagesViewProps> = ({ contextId, setContextId }) 
 
 
     return (
-        <div className="relative flex h-[calc(100vh-6.5rem)] bg-white dark:bg-gray-800 rounded-lg shadow
+        <div className="relative flex h-[calc(100vh-6.5rem)] bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
+            {/* Conversation List Panel */}
+            <div className={`
+                w-full md:w-1/3 xl:w-1/4 border-r border-gray-200 dark:border-gray-700 flex flex-col
+                ${(selectedConversation || isBroadcastMode) && 'hidden md:flex'}
+            `}>
+                <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+                    <h2 className="text-xl font-bold text-gray-800 dark:text-white">Mensajería</h2>
+                    <div className="mt-2 flex border border-gray-300 dark:border-gray-600 rounded-md">
+                        <button onClick={() => setActiveTab('customers')} className={`flex-1 py-1.5 text-sm rounded-l-md ${activeTab === 'customers' ? 'bg-primary-600 text-white' : 'bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600'}`}>Clientes</button>
+                        <button onClick={() => setActiveTab('merchants')} className={`flex-1 py-1.5 text-sm rounded-r-md ${activeTab === 'merchants' ? 'bg-primary-600 text-white' : 'bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600'}`}>Comercios</button>
+                    </div>
+                </div>
+
+                <div ref={searchContainerRef} className="p-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0 relative">
+                     <div className="relative">
+                        <span className="absolute inset-y-0 left-0 flex items-center pl-3">
+                            <svg className="w-5 h-5 text-gray-400" viewBox="0 0 24 24" fill="none"><path d="M21 21L15.803 15.803M15.803 15.803C17.2096 14.3964 18 12.4883 18 10.5C18 6.35786 14.6421 3 10.5 3C6.35786 3 3 6.35786 3 10.5C3 14.6421 6.35786 18 10.5 18C12.4883 18 14.3964 17.2096 15.803 15.803Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round"></path></svg>
+                        </span>
+                        <input 
+                            type="text" 
+                            placeholder="Buscar o iniciar un chat nuevo..." 
+                            value={searchQuery}
+                            onChange={e => setSearchQuery(e.target.value)}
+                            onFocus={handleSearchFocus}
+                            className="w-full py-2 pl-10 pr-4 text-gray-700 bg-gray-100 border-transparent rounded-lg dark:bg-gray-700 dark:text-gray-300 focus:outline-none focus:bg-white dark:focus:bg-gray-600 focus:border-primary-500" 
+                        />
+                    </div>
+
+                    {isUserListVisible && (
+                         <div className="absolute top-full left-0 right-0 mt-1 mx-4 bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg shadow-lg z-10 max-h-80 overflow-y-auto">
+                            <div className="flex border-b dark:border-gray-700">
+                                <button onClick={() => setUserListTab('customers')} className={`flex-1 py-2 text-sm ${userListTab === 'customers' ? 'bg-primary-50 dark:bg-gray-900 font-semibold' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}>Clientes</button>
+                                <button onClick={() => setUserListTab('merchants')} className={`flex-1 py-2 text-sm ${userListTab === 'merchants' ? 'bg-primary-50 dark:bg-gray-900 font-semibold' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}>Comercios</button>
+                            </div>
+                            <div className="p-2 flex justify-between items-center border-b dark:border-gray-700">
+                                <span className="text-xs font-bold uppercase text-gray-500">Seleccionar todos</span>
+                                <input type="checkbox" onChange={handleSelectAllUsers} className="h-4 w-4 rounded text-primary-600 focus:ring-primary-500 border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700" />
+                            </div>
+                             {isUsersLoading ? <div className="p-4 text-center text-gray-500">Cargando...</div> : (
+                                filteredUsersForSelection.map(user => (
+                                    <div key={user.id} onClick={() => handleRecipientToggle(user)} className="flex items-center p-3 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">
+                                        <input type="checkbox" readOnly checked={selectedRecipients.some(r => r.id === user.id)} className="h-4 w-4 rounded text-primary-600 focus:ring-primary-500 border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 mr-3" />
+                                        <img src={user.avatarUrl} alt={user.name} className="h-8 w-8 rounded-full mr-3" />
+                                        <span className="text-sm font-medium">{user.name}</span>
+                                    </div>
+                                ))
+                            )}
+                         </div>
+                    )}
+                </div>
+
+                <div className="flex justify-between items-center px-4 py-2 border-b dark:border-gray-700">
+                    <button onClick={() => setIsArchiveView(!isArchiveView)} className="text-sm text-primary-600 dark:text-primary-400 hover:underline">
+                        {isArchiveView ? 'Ver Activos' : 'Ver Archivados'}
+                    </button>
+                    {!isSelectionMode ? (
+                        <button onClick={() => setIsSelectionMode(true)} className="text-sm text-primary-600 dark:text-primary-400 hover:underline">Seleccionar</button>
+                    ) : (
+                        <div className="flex items-center space-x-2">
+                             <button onClick={handleSelectAll} className="text-sm p-1">
+                                {selectedConversationIds.size === filteredConversations.length ? 'Ninguno' : 'Todos'}
+                             </button>
+                             <button onClick={() => handleAction('archive')} disabled={selectedConversationIds.size === 0} className="p-1 disabled:opacity-50"><ArchiveBoxIcon className="w-5 h-5" /></button>
+                             <button onClick={() => setIsDeleteModalOpen(true)} disabled={selectedConversationIds.size === 0} className="p-1 disabled:opacity-50"><TrashIcon className="w-5 h-5 text-red-500" /></button>
+                             <button onClick={() => { setIsSelectionMode(false); setSelectedConversationIds(new Set()); }} className="text-sm">Cancelar</button>
+                        </div>
+                    )}
+                </div>
+
+                <div className="flex-grow overflow-y-auto">
+                    {isLoadingConversations ? (
+                        <div className="p-4 text-center text-gray-500">Cargando conversaciones...</div>
+                    ) : filteredConversations.length > 0 ? (
+                        filteredConversations.map(conv => (
+                            <button
+                                key={conv.id}
+                                onClick={() => {
+                                    if (isSelectionMode) handleToggleSelection(conv.id);
+                                    else { setSelectedConversation(conv); setSelectedRecipients([]); }
+                                }}
+                                className={`w-full text-left flex items-center p-3 border-b border-gray-200 dark:border-gray-700 transition-colors duration-150
+                                    ${selectedConversation?.id === conv.id ? 'bg-primary-50 dark:bg-gray-900' : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'}
+                                    ${selectedConversationIds.has(conv.id) ? 'bg-blue-100 dark:bg-blue-900/50' : ''}
+                                `}
+                            >
+                                {isSelectionMode && <input type="checkbox" readOnly checked={selectedConversationIds.has(conv.id)} className="h-4 w-4 rounded text-primary-600 focus:ring-primary-500 border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 mr-3" />}
+                                <img src={conv.userAvatarUrl} alt={conv.userName} className="h-10 w-10 rounded-full mr-3" />
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex justify-between items-baseline">
+                                        <p className="font-semibold truncate text-gray-800 dark:text-white">{conv.userName}</p>
+                                        <p className="text-xs text-gray-400 flex-shrink-0">{new Date(conv.lastMessageTimestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{conv.lastMessage}</p>
+                                        {conv.unreadCount > 0 && <span className="ml-2 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white">{conv.unreadCount}</span>}
+                                    </div>
+                                </div>
+                            </button>
+                        ))
+                    ) : (
+                        <div className="p-4 text-center text-gray-500">{isArchiveView ? 'No hay conversaciones archivadas.' : 'No hay conversaciones activas.'}</div>
+                    )}
+                </div>
+            </div>
+
+            {/* Chat Panel */}
+            <div className={`
+                w-full md:w-2/3 xl:w-3/4 flex flex-col bg-gray-50 dark:bg-gray-800/50
+                ${!(selectedConversation || isBroadcastMode) && 'hidden md:flex'}
+            `}>
+                {selectedConversation || isBroadcastMode ? (
+                    <>
+                        <div className="flex-shrink-0 flex items-center p-3 border-b border-gray-200 dark:border-gray-700">
+                             <button onClick={() => { setSelectedConversation(null); setSelectedRecipients([]); }} className="md:hidden mr-2 p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
+                                <ArrowLeftIcon className="w-5 h-5"/>
+                            </button>
+                            {selectedConversation && (
+                                <>
+                                    <img src={selectedConversation.userAvatarUrl} alt={selectedConversation.userName} className="h-10 w-10 rounded-full mr-3" />
+                                    <div>
+                                        <h3 className="font-semibold">{selectedConversation.userName}</h3>
+                                        <p className="text-xs text-gray-500">{selectedConversation.role}</p>
+                                    </div>
+                                </>
+                            )}
+                            {isBroadcastMode && (
+                                <div>
+                                    <h3 className="font-semibold">Mensaje Masivo</h3>
+                                    <p className="text-xs text-gray-500">{selectedRecipients.length} destinatarios</p>
+                                </div>
+                            )}
+                        </div>
+                        <div className="flex-grow p-4 overflow-y-auto space-y-4">
+                            {isLoadingMessages && <div className="text-center text-gray-500">Cargando mensajes...</div>}
+                            {messages.map((msg) => (
+                                <div key={msg.id} className={`flex ${msg.sender === 'admin' ? 'justify-end' : 'justify-start'}`}>
+                                    <div className={`max-w-xs lg:max-w-md px-4 py-2 rounded-2xl ${msg.sender === 'admin' ? 'bg-primary-500 text-white rounded-br-none' : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-bl-none'}`}>
+                                        <p className="text-sm">{msg.text}</p>
+                                        <div className="flex items-center justify-end mt-1">
+                                            <p className="text-xs opacity-70 mr-1">{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                                            {msg.sender === 'admin' && (
+                                                msg.status === MessageStatus.READ ? <DoubleCheckIcon color="#4ade80" className="w-4 h-4" /> :
+                                                msg.status === MessageStatus.DELIVERED ? <DoubleCheckIcon className="w-4 h-4" /> :
+                                                <CheckIcon className="w-4 h-4" />
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                            <div ref={messagesEndRef} />
+                        </div>
+                        {isBroadcastMode && (
+                             <div className="flex-shrink-0 p-2 border-t border-gray-200 dark:border-gray-700">
+                                <div className="flex flex-wrap gap-1">
+                                    {selectedRecipients.map(r => (
+                                        <span key={r.id} className="flex items-center bg-gray-200 dark:bg-gray-700 rounded-full px-2 py-0.5 text-xs">
+                                            {r.name}
+                                            <button onClick={() => handleRecipientToggle(r)} className="ml-1.5 text-gray-500 hover:text-gray-800 dark:hover:text-gray-200">
+                                                &times;
+                                            </button>
+                                        </span>
+                                    ))}
+                                </div>
+                             </div>
+                        )}
+                        <div className="flex-shrink-0 p-4 border-t border-gray-200 dark:border-gray-700">
+                            <form onSubmit={handleSendMessage} className="flex items-center space-x-3">
+                                <input
+                                    type="text"
+                                    value={newMessage}
+                                    onChange={e => setNewMessage(e.target.value)}
+                                    placeholder={isBroadcastMode ? "Escribe un mensaje para todos..." : "Escribe un mensaje..."}
+                                    disabled={isActionLoading}
+                                    className="flex-1 py-2 px-4 bg-gray-100 dark:bg-gray-700 border-transparent rounded-full focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                />
+                                <button type="submit" disabled={!newMessage.trim() || isActionLoading} className="p-2 bg-primary-600 text-white rounded-full hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                                    <SendIcon className="w-5 h-5" />
+                                </button>
+                            </form>
+                             {broadcastSuccess && <p className="text-green-500 text-sm mt-2 text-center">Mensaje masivo enviado con éxito.</p>}
+                        </div>
+                    </>
+                ) : (
+                    <div className="flex-grow flex flex-col items-center justify-center text-center text-gray-500 dark:text-gray-400">
+                        <MessageIcon className="w-16 h-16 mb-4"/>
+                        <h3 className="text-xl font-semibold">Bienvenido a Mensajería</h3>
+                        <p>Selecciona una conversación para empezar a chatear o busca un usuario para iniciar una nueva.</p>
+                    </div>
+                )}
+            </div>
+            <ConfirmationModal 
+                isOpen={isDeleteModalOpen}
+                onClose={() => setIsDeleteModalOpen(false)}
+                onConfirm={() => handleAction('delete')}
+                isConfirming={isActionLoading}
+                title="Confirmar Eliminación"
+                message={`¿Estás seguro de que quieres eliminar ${selectedConversationIds.size} conversación(es)? Esta acción es permanente.`}
+            />
+        </div>
+    );
+};
+
+export default MessagesView;
