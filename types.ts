@@ -1,91 +1,71 @@
-export enum Role {
-    ADMIN = 'Administrador',
-    MERCHANT = 'Comercio',
-    CUSTOMER = 'Cliente',
-}
+// --- ENUMS ---
 
-export interface User {
-    id: string;
-    name: string;
-    email: string;
-    role: Role;
-    avatarUrl: string;
-}
+export enum TipsStatus { PENDING = 'Pendiente', PAID = 'Pagado' }
+export enum AccountStatus { ACTIVE = 'Activa', PENDING = 'Pendiente', SUSPENDED = 'Suspendida', DELETION_PENDING = 'Eliminación Programada' }
+export enum ActivityStatus { ONLINE = 'Online', OFFLINE = 'Offline' }
+export enum OrderStatus { PENDING = 'Pendiente', PROCESSING = 'Procesando', SHIPPED = 'Enviado', DELIVERED = 'Entregado', CANCELLED = 'Cancelado' }
+export enum ProductCategory { COFFEE = 'Café', BOOKS = 'Libros', CLOTHING = 'Ropa', ELECTRONICS = 'Electrónica', GROCERIES = 'Abarrotes', GOURMET = 'Gourmet' }
+export enum ReceiptStatus { GENERATED = 'Generado' }
+export enum Role { ADMIN = 'Admin', CUSTOMER = 'Cliente', MERCHANT = 'Comercio' }
+export enum MessageStatus { SENT = 'Enviado', DELIVERED = 'Entregado', READ = 'Leído' }
+export enum UnitOfMeasure { GRAMS = 'g', KILOGRAMS = 'kg', MILLILITERS = 'ml', UNITS = 'unidades' }
+
+// --- INTERFACES & TYPES ---
 
 export interface Notification {
-    id: string;
-    message: string;
-    timestamp: string;
-    read: boolean;
-    linkTo?: {
-        view: string;
-        targetId: string;
-    };
-}
-
-export enum AccountStatus {
-    ACTIVE = 'Activa',
-    PENDING = 'Pendiente',
-    SUSPENDED = 'Suspendida',
-    DELETION_PENDING = 'Pendiente de Eliminación',
-}
-
-export enum TipsStatus {
-    PAID = 'Pagado',
-    PENDING = 'Pendiente',
+  id: string;
+  message: string;
+  timestamp: string;
+  read: boolean;
+  linkTo?: { view: string; targetId: string };
 }
 
 export interface Merchant {
-    id: string;
-    name: string;
-    address: string;
-    lat: number;
-    lng: number;
-    tipPerTransaction: number;
-    lastPaymentDate: string; // "YYYY-MM-DD"
-    tipsStatus: TipsStatus;
-    daysDue: number;
-    amountDue: number;
-    accountStatus: AccountStatus;
-    deletionScheduledAt?: string;
+  id: string;
+  name: string;
+  address: string;
+  tipPerTransaction: number;
+  lastPaymentDate: string;
+  tipsStatus: TipsStatus;
+  daysDue: number;
+  amountDue: number;
+  accountStatus: AccountStatus;
+  lat: number;
+  lng: number;
+  deletionScheduledAt?: string;
 }
 
-export enum ActivityStatus {
-    ONLINE = 'En línea',
-    OFFLINE = 'Desconectado',
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: Role;
+  avatarUrl: string;
 }
 
 export interface MerchantProfile {
-    id: string;
-    accountName: string;
-    phone: string;
-    address: string;
-    tipPerTransaction: number;
-    sellerName: string;
-    creationDate: string; // ISO date string
-    activity: ActivityStatus;
-    lastConnection: string; // ISO date string
-    accountStatus: AccountStatus;
+  id: string;
+  accountName: string;
+  phone: string;
+  address: string;
+  tipPerTransaction: number;
+  sellerName: string;
+  creationDate: string;
+  activity: ActivityStatus;
+  lastConnection: string;
+  accountStatus: AccountStatus;
 }
 
 export interface TipBalance {
-    id: string;
-    totalTipsReceived: number;
-    totalTipsPaid: number;
-    previousBalance: number | null;
-    currentBalance: number;
-    lastPaymentAmount: number | null;
-    lastPaymentDate: string; // ISO date string
-    status: AccountStatus;
-    newTipsSinceLastPayment: number;
-}
-
-export enum OrderStatus {
-    PENDING = 'Pendiente',
-    PROCESSING = 'Preparando',
-    SHIPPED = 'Enviado',
-    DELIVERED = 'Entregado',
-    CANCELLED = 'Cancelado',
+  id: string;
+  totalTipsReceived: number;
+  totalTipsPaid: number;
+  previousBalance: number | null;
+  currentBalance: number;
+  lastPaymentAmount: number | null;
+  lastPaymentDate: string;
+  status: AccountStatus;
+  newTipsSinceLastPayment: number;
 }
 
 export interface OrderProduct {
@@ -96,93 +76,85 @@ export interface OrderProduct {
 }
 
 export interface Order {
-    id: string;
-    merchantId: string;
-    customerName: string;
-    customerAddress: string;
-    location: string;
-    date: string; // "YYYY-MM-DD"
-    status: OrderStatus;
-    products: OrderProduct[];
-    merchantTip: number;
-    platformTip: number;
-    method: string;
+  id: string;
+  merchantId: string;
+  customerName: string;
+  customerAddress: string;
+  location: string;
+  date: string; // YYYY-MM-DD
+  status: OrderStatus;
+  products: OrderProduct[];
+  merchantTip: number;
+  platformTip: number;
+  method: string;
 }
 
 export interface MerchantOrderSummary {
-    merchantId: string;
-    merchantName: string;
-    ordersToday: number;
-    totalRevenue: number;
-    expectedRevenue: number;
+  merchantId: string;
+  merchantName: string;
+  ordersToday: number;
+  totalRevenue: number;
+  expectedRevenue: number;
 }
 
 export interface OrderFilterOptions {
-    products: string[];
-    locations: string[];
+  products: string[];
+  locations: string[];
 }
 
 export interface MerchantSummaryFilters {
-    date: string;
-    product: string;
-    location: string;
-    status: OrderStatus | '';
-    userLocation?: { lat: number; lng: number };
-}
-
-
-export enum ProductCategory {
-    COFFEE = 'Café',
-    BOOKS = 'Libros',
-    CLOTHING = 'Ropa',
-    ELECTRONICS = 'Electrónica',
-    GROCERIES = 'Abarrotes',
-    GOURMET = 'Gourmet',
+  date: string;
+  product: string;
+  location: string;
+  status: OrderStatus | '';
+  userLocation?: { lat: number; lng: number };
 }
 
 export interface Product {
-    id: string;
-    name: string;
-    brand: string;
-    merchantName: string;
-    category: ProductCategory;
-    price: number;
-    stock: number;
+  id: string;
+  name: string;
+  brand: string;
+  merchantName: string;
+  category: ProductCategory;
+  price: number;
+  stock: number;
+  sizeValue?: number;
+  unitOfMeasure?: UnitOfMeasure;
+  flavorAroma?: string;
+  createdAt?: string;
 }
 
 export interface TipPayment {
-    id: string;
-    orderId: string;
-    customerName: string;
-    merchantName: string;
-    date: string; // ISO date string
-    amount: number;
-    location: string;
+  id: string;
+  orderId: string;
+  customerName: string;
+  merchantName: string;
+  date: string;
+  amount: number;
+  location: string;
 }
 
 export interface AuditLog {
-    id: string;
-    timestamp: string; // ISO date string
-    user: string;
-    action: string;
-    details: string;
-}
-
-export enum ReceiptStatus {
-    GENERATED = 'Generado',
+  id: string;
+  timestamp: string;
+  user: string;
+  action: string;
+  details: string;
 }
 
 export interface Receipt {
-    id: string;
-    merchantId: string;
-    merchantName: string;
-    pendingBalance: number;
-    amountReceived: number;
-    difference: number;
-    createdBy: string;
-    date: string; // ISO date string
-    status: ReceiptStatus;
+  id: string;
+  merchantId: string;
+  merchantName: string;
+  pendingBalance: number;
+  amountReceived: number;
+  difference: number;
+  createdBy: string;
+  date: string;
+  status: ReceiptStatus;
 }
+
+export type DashboardMetricKey = 'currentRevenue' | 'ordersToday' | 'newCustomers' | 'totalThisMonth' | 'totalDue';
 
 export interface DashboardStat {
     value: string;
@@ -199,30 +171,9 @@ export interface DashboardStats {
     totalDue: DashboardStat;
 }
 
-export type DashboardMetricKey = keyof DashboardStats;
-
 export interface HistoricalDataPoint {
-    date: string;
-    value: number;
-}
-
-export interface HistoricalChartData {
-    [key: string]: HistoricalDataPoint[];
-}
-
-export enum MessageStatus {
-    SENT = 'Enviado',
-    DELIVERED = 'Recibido',
-    READ = 'Visto',
-}
-
-export interface Message {
-    id: string;
-    conversationId: string;
-    sender: 'admin' | 'user';
-    text: string;
-    timestamp: string; // ISO date string
-    status: MessageStatus;
+  date: string;
+  value: number;
 }
 
 export interface Conversation {
@@ -230,20 +181,21 @@ export interface Conversation {
     userId: string;
     userName: string;
     userAvatarUrl: string;
-    role: Role.CUSTOMER | Role.MERCHANT;
+    role: Role;
     lastMessage: string;
     lastMessageTimestamp: string;
     unreadCount: number;
 }
 
-export interface MarketplaceUser {
+export interface Message {
     id: string;
-    name: string;
-    avatarUrl: string;
-    role: Role.CUSTOMER | Role.MERCHANT;
+    conversationId: string;
+    sender: 'user' | 'admin';
+    text: string;
+    timestamp: string;
+    status: MessageStatus;
 }
 
-// Settings
 export interface ProfileSettings {
     name: string;
     avatarUrl: string;
@@ -267,4 +219,11 @@ export interface AppSettings {
     profile: ProfileSettings;
     notifications: NotificationSettings;
     financial: FinancialSettings;
+}
+
+export interface MarketplaceUser {
+    id: string;
+    name: string;
+    avatarUrl: string;
+    role: Role;
 }

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Product, ProductCategory } from '../../types';
+import { Product, ProductCategory, UnitOfMeasure } from '../../types';
 import { api } from '../../services/api';
 
 interface ProductModalProps {
@@ -17,7 +17,9 @@ const ProductModal: React.FC<ProductModalProps> = ({ isOpen, onClose, onSuccess,
         merchantName: '',
         category: Object.values(ProductCategory)[0],
         price: '',
-        stock: ''
+        sizeValue: '',
+        unitOfMeasure: Object.values(UnitOfMeasure)[0],
+        flavorAroma: '',
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState('');
@@ -31,7 +33,9 @@ const ProductModal: React.FC<ProductModalProps> = ({ isOpen, onClose, onSuccess,
                     merchantName: productToEdit.merchantName,
                     category: productToEdit.category,
                     price: String(productToEdit.price),
-                    stock: String(productToEdit.stock),
+                    sizeValue: String(productToEdit.sizeValue || ''),
+                    unitOfMeasure: productToEdit.unitOfMeasure || Object.values(UnitOfMeasure)[0],
+                    flavorAroma: productToEdit.flavorAroma || '',
                 });
             } else {
                 setFormData({
@@ -40,7 +44,9 @@ const ProductModal: React.FC<ProductModalProps> = ({ isOpen, onClose, onSuccess,
                     merchantName: 'Café del Sol', 
                     category: Object.values(ProductCategory)[0],
                     price: '',
-                    stock: ''
+                    sizeValue: '',
+                    unitOfMeasure: Object.values(UnitOfMeasure)[0],
+                    flavorAroma: '',
                 });
             }
         }
@@ -58,25 +64,40 @@ const ProductModal: React.FC<ProductModalProps> = ({ isOpen, onClose, onSuccess,
         setIsSubmitting(true);
         setError('');
 
-        const productData = {
-            name: formData.name,
-            brand: formData.brand,
-            merchantName: formData.merchantName,
-            category: formData.category,
-            price: parseFloat(formData.price),
-            stock: parseInt(formData.stock, 10),
-        };
+        const price = parseFloat(formData.price);
+        const sizeValue = formData.sizeValue ? parseFloat(formData.sizeValue) : undefined;
 
-        if (isNaN(productData.price) || isNaN(productData.stock) || productData.price < 0 || productData.stock < 0) {
-            setError('Precio y Stock deben ser números válidos y positivos.');
+        if (isNaN(price) || price < 0) {
+            setError('El precio debe ser un número válido y positivo.');
+            setIsSubmitting(false);
+            return;
+        }
+        
+        if (formData.sizeValue && (isNaN(sizeValue as number) || (sizeValue as number) < 0)) {
+            setError('La cantidad debe ser un número válido y positivo.');
             setIsSubmitting(false);
             return;
         }
 
+        const commonData = {
+            name: formData.name,
+            brand: formData.brand,
+            merchantName: formData.merchantName,
+            category: formData.category,
+            price: price,
+            sizeValue: sizeValue,
+            unitOfMeasure: formData.unitOfMeasure as UnitOfMeasure,
+            flavorAroma: formData.flavorAroma,
+        };
+
         try {
             if (isEditMode && productToEdit) {
-                await api.updateProduct(productToEdit.id, productData);
+                await api.updateProduct(productToEdit.id, commonData);
             } else {
+                const productData = {
+                    ...commonData,
+                    stock: 0, // Default stock to 0 for new products
+                };
                 await api.addProduct(productData as Omit<Product, 'id'>);
             }
             onSuccess();
@@ -129,9 +150,21 @@ const ProductModal: React.FC<ProductModalProps> = ({ isOpen, onClose, onSuccess,
                             <label htmlFor="price" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Precio</label>
                             <input type="number" id="price" name="price" value={formData.price} onChange={handleChange} required step="0.01" min="0" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm dark:bg-gray-900 dark:border-gray-600 dark:text-gray-200 focus:ring-primary-500 focus:border-primary-500" />
                         </div>
-                         <div>
-                            <label htmlFor="stock" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Stock</label>
-                            <input type="number" id="stock" name="stock" value={formData.stock} onChange={handleChange} required step="1" min="0" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm dark:bg-gray-900 dark:border-gray-600 dark:text-gray-200 focus:ring-primary-500 focus:border-primary-500" />
+                        <div>
+                            <label htmlFor="sizeValue" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Cantidad (ej. 250)</label>
+                            <input type="number" id="sizeValue" name="sizeValue" value={formData.sizeValue} onChange={handleChange} step="any" min="0" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm dark:bg-gray-900 dark:border-gray-600 dark:text-gray-200 focus:ring-primary-500 focus:border-primary-500" />
+                        </div>
+                        <div>
+                            <label htmlFor="unitOfMeasure" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Unidad de Medida</label>
+                            <select id="unitOfMeasure" name="unitOfMeasure" value={formData.unitOfMeasure} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm dark:bg-gray-900 dark:border-gray-600 dark:text-gray-200 focus:ring-primary-500 focus:border-primary-500">
+                                {Object.values(UnitOfMeasure).map(unit => (
+                                    <option key={unit} value={unit}>{unit}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div>
+                            <label htmlFor="flavorAroma" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Sabor/Aroma (Opcional)</label>
+                            <input type="text" id="flavorAroma" name="flavorAroma" value={formData.flavorAroma} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm dark:bg-gray-900 dark:border-gray-600 dark:text-gray-200 focus:ring-primary-500 focus:border-primary-500" />
                         </div>
                         {error && <p className="col-span-2 text-sm text-red-500">{error}</p>}
                     </div>

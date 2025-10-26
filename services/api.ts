@@ -2,7 +2,8 @@ import {
   Notification, Merchant, TipsStatus, AccountStatus, MerchantProfile,
   ActivityStatus, TipBalance, MerchantOrderSummary, Order, OrderStatus, OrderFilterOptions,
   MerchantSummaryFilters, Product, ProductCategory, TipPayment, AuditLog, Receipt, ReceiptStatus, DashboardStats,
-  DashboardMetricKey, HistoricalDataPoint, DashboardStat, Conversation, Message, Role, MessageStatus, AppSettings, MarketplaceUser
+  DashboardMetricKey, HistoricalDataPoint, DashboardStat, Conversation, Message, Role, MessageStatus, AppSettings, MarketplaceUser,
+  UnitOfMeasure
 } from '../types';
 
 // Helper to create a date string in YYY-MM-DD format
@@ -47,14 +48,15 @@ let rawMerchants: Omit<Merchant, 'lat' | 'lng'>[] = [
 ];
 
 let products: Product[] = [
-    { id: 'PROD-1', name: 'Café Americano', brand: 'Cafetal', merchantName: 'Café del Sol', category: ProductCategory.COFFEE, price: 3.50, stock: 100 },
-    { id: 'PROD-2', name: 'Libro de Ficción', brand: 'Ediciones Imaginarias', merchantName: 'Libros y Letras', category: ProductCategory.BOOKS, price: 15.00, stock: 50 },
-    { id: 'PROD-3', name: 'Camiseta Gráfica', brand: 'Urban Style', merchantName: 'Ropa Urbana Co.', category: ProductCategory.CLOTHING, price: 25.00, stock: 80 },
-    { id: 'PROD-4', name: 'Audífonos Inalámbricos', brand: 'SoundWave', merchantName: 'TecnoGadgets', category: ProductCategory.ELECTRONICS, price: 79.99, stock: 30 },
-    { id: 'PROD-5', name: 'Manzanas Orgánicas (kg)', brand: 'Naturaleza Viva', merchantName: 'Verde Fresco', category: ProductCategory.GROCERIES, price: 4.50, stock: 200 },
-    { id: 'PROD-6', name: 'Queso Brie Francés', brand: 'Le Gourmet', merchantName: 'El Rincón del Gourmet', category: ProductCategory.GOURMET, price: 12.75, stock: 40 },
-    { id: 'PROD-7', name: 'Latte', brand: 'Cafetal', merchantName: 'Café del Sol', category: ProductCategory.COFFEE, price: 4.00, stock: 100 },
+    { id: 'PROD-1', name: 'Café Americano', brand: 'Cafetal', merchantName: 'Café del Sol', category: ProductCategory.COFFEE, price: 3.50, stock: 100, sizeValue: 250, unitOfMeasure: UnitOfMeasure.GRAMS, flavorAroma: 'Tostado medio', createdAt: '2023-01-15T10:00:00Z' },
+    { id: 'PROD-2', name: 'Libro de Ficción', brand: 'Ediciones Imaginarias', merchantName: 'Libros y Letras', category: ProductCategory.BOOKS, price: 15.00, stock: 50, sizeValue: 1, unitOfMeasure: UnitOfMeasure.UNITS, createdAt: '2023-02-20T11:30:00Z' },
+    { id: 'PROD-3', name: 'Camiseta Gráfica', brand: 'Urban Style', merchantName: 'Ropa Urbana Co.', category: ProductCategory.CLOTHING, price: 25.00, stock: 80, sizeValue: 1, unitOfMeasure: UnitOfMeasure.UNITS, flavorAroma: 'Algodón', createdAt: '2023-03-10T09:00:00Z' },
+    { id: 'PROD-4', name: 'Audífonos Inalámbricos', brand: 'SoundWave', merchantName: 'TecnoGadgets', category: ProductCategory.ELECTRONICS, price: 79.99, stock: 30, sizeValue: 1, unitOfMeasure: UnitOfMeasure.UNITS, createdAt: '2023-04-05T14:00:00Z' },
+    { id: 'PROD-5', name: 'Manzanas Orgánicas (kg)', brand: 'Naturaleza Viva', merchantName: 'Verde Fresco', category: ProductCategory.GROCERIES, price: 4.50, stock: 200, sizeValue: 1, unitOfMeasure: UnitOfMeasure.KILOGRAMS, createdAt: '2023-05-01T08:20:00Z' },
+    { id: 'PROD-6', name: 'Queso Brie Francés', brand: 'Le Gourmet', merchantName: 'El Rincón del Gourmet', category: ProductCategory.GOURMET, price: 12.75, stock: 40, sizeValue: 200, unitOfMeasure: UnitOfMeasure.GRAMS, createdAt: '2023-05-18T18:00:00Z' },
+    { id: 'PROD-7', name: 'Latte', brand: 'Cafetal', merchantName: 'Café del Sol', category: ProductCategory.COFFEE, price: 4.00, stock: 100, sizeValue: 350, unitOfMeasure: UnitOfMeasure.MILLILITERS, flavorAroma: 'Vainilla', createdAt: '2023-06-02T10:45:00Z' },
 ];
+
 
 // --- COHERENT MOCK DATA FOR ORDERS AND RECEIPTS ---
 const orders: Order[] = [
@@ -675,7 +677,8 @@ export const api = {
         await sleep(400);
         const newProduct: Product = {
             id: `PROD-${Date.now()}`,
-            ...productData
+            ...productData,
+            createdAt: new Date().toISOString(),
         };
         products = [newProduct, ...products];
         return newProduct;
@@ -746,6 +749,53 @@ export const api = {
         
         // Find and return the newly created receipt (the instance in the global array)
         return receipts.find(r => r.id === newReceipt.id)!;
+    },
+
+    async getSalesForProductsByMerchant(merchantId: string, productIds: string[]): Promise<Map<string, { totalSales: number; totalUnits: number }>> {
+        await sleep(400);
+        const salesMap = new Map<string, { totalSales: number; totalUnits: number }>();
+        productIds.forEach(id => salesMap.set(id, { totalSales: 0, totalUnits: 0 }));
+
+        const merchantOrders = orders.filter(
+            o => o.merchantId === merchantId && (o.status === OrderStatus.DELIVERED || o.status === OrderStatus.SHIPPED)
+        );
+
+        for (const order of merchantOrders) {
+            for (const product of order.products) {
+                if (salesMap.has(product.id)) {
+                    const currentSalesData = salesMap.get(product.id)!;
+                    salesMap.set(product.id, {
+                        totalSales: currentSalesData.totalSales + (product.price * product.quantity),
+                        totalUnits: currentSalesData.totalUnits + product.quantity
+                    });
+                }
+            }
+        }
+        return salesMap;
+    },
+
+    async getSalesForAllProducts(): Promise<Map<string, { totalSales: number; totalUnits: number }>> {
+        await sleep(400);
+        const salesMap = new Map<string, { totalSales: number; totalUnits: number }>();
+        // Initialize map for all products
+        products.forEach(p => salesMap.set(p.id, { totalSales: 0, totalUnits: 0 }));
+
+        const validOrders = orders.filter(
+            o => o.status === OrderStatus.DELIVERED || o.status === OrderStatus.SHIPPED
+        );
+
+        for (const order of validOrders) {
+            for (const product of order.products) {
+                if (salesMap.has(product.id)) {
+                    const currentSalesData = salesMap.get(product.id)!;
+                    salesMap.set(product.id, {
+                        totalSales: currentSalesData.totalSales + (product.price * product.quantity),
+                        totalUnits: currentSalesData.totalUnits + product.quantity
+                    });
+                }
+            }
+        }
+        return salesMap;
     },
 
     async getConversations(role: Role.CUSTOMER | Role.MERCHANT): Promise<Conversation[]> {
