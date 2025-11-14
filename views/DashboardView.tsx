@@ -17,15 +17,17 @@ const StatCard = ({ title, value, change, changeType, comparisonPeriod, isLoadin
                     <div className="animate-pulse bg-gray-200 dark:bg-gray-700 h-6 w-3/4 rounded-md"></div>
                 </div>
             ) : (
-                <div className="mt-1 flex items-baseline justify-between">
+                <div className="mt-2">
                     <p className="text-2xl font-semibold text-gray-900 dark:text-white">{value}</p>
                     {change && (
-                        <div className="text-right">
-                            <span className={`text-sm font-medium ${isGoodChange ? 'text-green-600' : 'text-red-600'}`}>
-                                {isIncrease ? '▲' : '▼'} {absoluteChange ? `${absoluteChange} (${change})` : change}
+                        <div className="mt-1">
+                            <span className={`flex items-center text-sm font-medium ${isGoodChange ? 'text-green-600' : 'text-red-600'}`}>
+                                {isIncrease ? '▲' : '▼'}
+                                &nbsp;
+                                {absoluteChange ? `${absoluteChange} (${change})` : change}
                             </span>
                              {comparisonPeriod && (
-                                 <p className="text-xs text-gray-400 dark:text-gray-500 -mt-1">{comparisonPeriod}</p>
+                                 <p className="text-xs text-gray-400 dark:text-gray-500">{comparisonPeriod}</p>
                             )}
                         </div>
                     )}

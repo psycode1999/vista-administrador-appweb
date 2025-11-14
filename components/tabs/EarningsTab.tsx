@@ -81,13 +81,13 @@ const EarningsTab: React.FC<EarningsTabProps> = ({ merchantId }) => {
                                     borderRadius: '0.5rem',
                                     color: '#ffffff'
                                 }}
+                                // FIX: The Tooltip formatter's `value` prop is of type `unknown`.
+                                // We must check if the value is a number before calling `toFixed` on it
+                                // to prevent a runtime error. If it's not a number, we convert it to a string.
                                 formatter={(value: unknown) => {
                                     if (typeof value === 'number') {
                                         return [`$${value.toFixed(2)}`, 'Ganancias'];
                                     }
-                                    // FIX: The original code returned `value` directly, which is of type `unknown`.
-                                    // This is not a valid ReactNode and likely caused a type inference failure.
-                                    // By converting non-number values to a string, we ensure a type-safe return value.
                                     return [String(value), 'Ganancias'];
                                 }}
                                 labelStyle={{ fontWeight: 'bold' }}

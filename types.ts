@@ -20,6 +20,7 @@ export enum ReceiptStatus { GENERATED = 'Generado' }
 export enum Role { ADMIN = 'Admin', CUSTOMER = 'Cliente', MERCHANT = 'Comercio' }
 export enum MessageStatus { SENT = 'Enviado', DELIVERED = 'Entregado', READ = 'Leído' }
 export enum UnitOfMeasure { GRAMS = 'g', KILOGRAMS = 'kg', MILLILITERS = 'ml', UNITS = 'unidades' }
+export enum DeliveryMethod { DELIVERY = 'Pedir delivery', PICKUP = 'Pasaré a recogerlo' }
 
 // --- INTERFACES & TYPES ---
 
@@ -97,7 +98,8 @@ export interface Order {
   products: OrderProduct[];
   merchantTip: number;
   platformTip: number;
-  method: string;
+  method: string; // Payment method
+  deliveryMethod: DeliveryMethod;
 }
 
 export interface MerchantOrderSummary {

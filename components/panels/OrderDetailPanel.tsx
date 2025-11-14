@@ -92,6 +92,10 @@ const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ order, onClose }) =
                         <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300">Método de Pago</h3>
                         <p className="font-medium">{order.method}</p>
                     </div>
+                    <div>
+                        <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300">Método de Entrega</h3>
+                        <p className="font-medium">{order.deliveryMethod}</p>
+                    </div>
                 </div>
             </div>
         </div>

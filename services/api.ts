@@ -3,7 +3,7 @@ import {
   ActivityStatus, TipBalance, MerchantOrderSummary, Order, OrderStatus, OrderFilterOptions,
   MerchantSummaryFilters, Product, ProductCategory, TipPayment, AuditLog, Receipt, ReceiptStatus, DashboardStats,
   DashboardMetricKey, HistoricalDataPoint, DashboardStat, Conversation, Message, Role, MessageStatus, AppSettings, MarketplaceUser,
-  UnitOfMeasure
+  UnitOfMeasure, DeliveryMethod
 } from '../types';
 
 // Helper to create a date string in YYY-MM-DD format
@@ -58,14 +58,14 @@ let products: Product[] = [
 // --- COHERENT MOCK DATA FOR ORDERS AND RECEIPTS ---
 const orders: Order[] = [
     // --- Merchant 1: Café del Sol ---
-    { id: 'ORD-101', merchantId: 'MERCH-1', customerName: 'Ana García', customerAddress: 'Calle A #1', location: 'Centro', date: '2023-09-15', status: OrderStatus.DELIVERED, products: [{id: 'PROD-1', name: 'Café Americano', price: 3.50, quantity: 2}], merchantTip: 1.00, platformTip: 10.50, method: 'Tarjeta de Crédito' },
-    { id: 'ORD-102', merchantId: 'MERCH-1', customerName: 'Luis Hernández', customerAddress: 'Calle D #4', location: 'Condesa', date: '2023-10-01', status: OrderStatus.DELIVERED, products: [{id: 'PROD-7', name: 'Latte', price: 4.00, quantity: 1}], merchantTip: 1.50, platformTip: 15.25, method: 'Efectivo' },
-    { id: 'ORD-103', merchantId: 'MERCH-1', customerName: 'Sofía Martínez', customerAddress: 'Calle C #3', location: 'Condesa', date: toDateString(new Date(Date.now() - 15 * 24 * 60 * 60 * 1000)), status: OrderStatus.SHIPPED, products: [{id: 'PROD-7', name: 'Latte', price: 4.00, quantity: 1}], merchantTip: 1.50, platformTip: 8.75, method: 'Efectivo' },
-    { id: 'ORD-104', merchantId: 'MERCH-1', customerName: 'Ana García', customerAddress: 'Calle A #1', location: 'Centro', date: toDateString(new Date()), status: OrderStatus.PROCESSING, products: [{id: 'PROD-1', name: 'Café Americano', price: 3.50, quantity: 2}], merchantTip: 1.00, platformTip: 5.25, method: 'Tarjeta de Crédito' },
+    { id: 'ORD-101', merchantId: 'MERCH-1', customerName: 'Ana García', customerAddress: 'Calle A #1', location: 'Centro', date: '2023-09-15', status: OrderStatus.DELIVERED, products: [{id: 'PROD-1', name: 'Café Americano', price: 3.50, quantity: 2}], merchantTip: 1.00, platformTip: 10.50, method: 'Tarjeta de Crédito', deliveryMethod: DeliveryMethod.DELIVERY },
+    { id: 'ORD-102', merchantId: 'MERCH-1', customerName: 'Luis Hernández', customerAddress: 'Calle D #4', location: 'Condesa', date: '2023-10-01', status: OrderStatus.DELIVERED, products: [{id: 'PROD-7', name: 'Latte', price: 4.00, quantity: 1}], merchantTip: 1.50, platformTip: 15.25, method: 'Efectivo', deliveryMethod: DeliveryMethod.PICKUP },
+    { id: 'ORD-103', merchantId: 'MERCH-1', customerName: 'Sofía Martínez', customerAddress: 'Calle C #3', location: 'Condesa', date: toDateString(new Date(Date.now() - 15 * 24 * 60 * 60 * 1000)), status: OrderStatus.SHIPPED, products: [{id: 'PROD-7', name: 'Latte', price: 4.00, quantity: 1}], merchantTip: 1.50, platformTip: 8.75, method: 'Efectivo', deliveryMethod: DeliveryMethod.DELIVERY },
+    { id: 'ORD-104', merchantId: 'MERCH-1', customerName: 'Ana García', customerAddress: 'Calle A #1', location: 'Centro', date: toDateString(new Date()), status: OrderStatus.PROCESSING, products: [{id: 'PROD-1', name: 'Café Americano', price: 3.50, quantity: 2}], merchantTip: 1.00, platformTip: 5.25, method: 'Tarjeta de Crédito', deliveryMethod: DeliveryMethod.PICKUP },
     
     // --- Merchant 2: Libros y Letras (Paid up) ---
-    { id: 'ORD-201', merchantId: 'MERCH-2', customerName: 'Carlos Rodríguez', customerAddress: 'Calle B #2', location: 'Polanco', date: '2023-10-20', status: OrderStatus.DELIVERED, products: [{id: 'PROD-2', name: 'Libro de Ficción', price: 15.00, quantity: 1}], merchantTip: 2.00, platformTip: 12.00, method: 'PayPal' },
-    { id: 'ORD-202', merchantId: 'MERCH-2', customerName: 'Elena Pérez', customerAddress: 'Calle E #5', location: 'Polanco', date: '2023-10-28', status: OrderStatus.DELIVERED, products: [{id: 'PROD-2', name: 'Libro de Ficción', price: 15.00, quantity: 1}], merchantTip: 2.00, platformTip: 13.50, method: 'PayPal' },
+    { id: 'ORD-201', merchantId: 'MERCH-2', customerName: 'Carlos Rodríguez', customerAddress: 'Calle B #2', location: 'Polanco', date: '2023-10-20', status: OrderStatus.DELIVERED, products: [{id: 'PROD-2', name: 'Libro de Ficción', price: 15.00, quantity: 1}], merchantTip: 2.00, platformTip: 12.00, method: 'PayPal', deliveryMethod: DeliveryMethod.DELIVERY },
+    { id: 'ORD-202', merchantId: 'MERCH-2', customerName: 'Elena Pérez', customerAddress: 'Calle E #5', location: 'Polanco', date: '2023-10-28', status: OrderStatus.DELIVERED, products: [{id: 'PROD-2', name: 'Libro de Ficción', price: 15.00, quantity: 1}], merchantTip: 2.00, platformTip: 13.50, method: 'PayPal', deliveryMethod: DeliveryMethod.PICKUP },
 ];
 
 let notifications: Notification[] = [];
@@ -118,17 +118,24 @@ const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 // --- REFACTORED DATA CONSISTENCY LOGIC ---
 
 /**
- * Rule A: Calculates 'Total Recibido' by summing platform tips from 
- * all delivered or shipped orders for each merchant.
+ * Rule A: Calculates 'Total Recibido' by summing platform tips from
+ * all delivered or shipped orders for each merchant. This includes
+ * orders for both delivery and pickup.
  */
 const calculateTotalTipsPerMerchant = (orders: Order[]): Map<string, number> => {
     const totalTips = new Map<string, number>();
-    orders.forEach(order => {
-        if ([OrderStatus.SHIPPED, OrderStatus.DELIVERED].includes(order.status)) {
-            const currentTips = totalTips.get(order.merchantId) || 0;
-            totalTips.set(order.merchantId, currentTips + order.platformTip);
-        }
-    });
+
+    const ordersForTips = orders.filter(order =>
+        [OrderStatus.SHIPPED, OrderStatus.DELIVERED].includes(order.status)
+    );
+
+    for (const order of ordersForTips) {
+        // The platform tip is summed for all completed orders,
+        // regardless of whether they are for delivery or pickup.
+        const currentTips = totalTips.get(order.merchantId) || 0;
+        totalTips.set(order.merchantId, currentTips + order.platformTip);
+    }
+
     return totalTips;
 };
 
