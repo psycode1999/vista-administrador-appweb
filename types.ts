@@ -4,7 +4,18 @@ export enum TipsStatus { PENDING = 'Pendiente', PAID = 'Pagado' }
 export enum AccountStatus { ACTIVE = 'Activa', PENDING = 'Pendiente', SUSPENDED = 'Suspendida', DELETION_PENDING = 'Eliminación Programada' }
 export enum ActivityStatus { ONLINE = 'Online', OFFLINE = 'Offline' }
 export enum OrderStatus { PENDING = 'Pendiente', PROCESSING = 'Procesando', SHIPPED = 'Enviado', DELIVERED = 'Entregado', CANCELLED = 'Cancelado' }
-export enum ProductCategory { COFFEE = 'Café', BOOKS = 'Libros', CLOTHING = 'Ropa', ELECTRONICS = 'Electrónica', GROCERIES = 'Abarrotes', GOURMET = 'Gourmet' }
+export enum ProductCategory {
+  FRESH_FOOD = 'Alimentos frescos',
+  BAKERY = 'Panadería y repostería',
+  PANTRY = 'Despensa / productos no perecederos',
+  SNACKS = 'Snacks y dulces',
+  BEVERAGES = 'Bebidas',
+  ALCOHOLIC_BEVERAGES = 'Bebidas alcohólicas',
+  HOME_CLEANING = 'Limpieza del hogar',
+  PERSONAL_HYGIENE = 'Higiene personal',
+  PETS = 'Mascotas',
+  STATIONERY = 'Papelería y oficina',
+}
 export enum ReceiptStatus { GENERATED = 'Generado' }
 export enum Role { ADMIN = 'Admin', CUSTOMER = 'Cliente', MERCHANT = 'Comercio' }
 export enum MessageStatus { SENT = 'Enviado', DELIVERED = 'Entregado', READ = 'Leído' }
@@ -114,10 +125,11 @@ export interface Product {
   id: string;
   name: string;
   brand: string;
-  merchantName: string;
+  merchantName?: string;
   category: ProductCategory;
   price: number;
   stock: number;
+  imageUrl?: string;
   sizeValue?: number;
   unitOfMeasure?: UnitOfMeasure;
   flavorAroma?: string;

@@ -70,33 +70,34 @@ const EarningsTab: React.FC<EarningsTabProps> = ({ merchantId }) => {
                     </div>
                 ) : chartData.length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 50 }}>
-                            <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.2} stroke="currentColor" />
-                            <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="currentColor" angle={-60} textAnchor="end" interval="auto" />
-                            <YAxis tick={{ fontSize: 10 }} stroke="currentColor" tickFormatter={(value) => `$${value}`} />
+                        <BarChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                            <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.2} stroke="currentColor"/>
+                            <XAxis dataKey="date" tick={{ fontSize: 12 }} stroke="currentColor" />
+                            <YAxis tick={{ fontSize: 12 }} stroke="currentColor" tickFormatter={(value) => `$${value}`} />
                             <Tooltip
                                 contentStyle={{
                                     backgroundColor: 'rgba(30, 41, 59, 0.9)',
                                     borderColor: '#4f46e5',
                                     borderRadius: '0.5rem',
+                                    color: '#ffffff'
                                 }}
-                                itemStyle={{ color: '#c7d2fe' }}
-                                labelStyle={{ fontWeight: 'bold', color: '#ffffff' }}
-                                // FIX: The 'value' from recharts' formatter can be of an uncertain type.
-                                // We check if it's a valid number before formatting to prevent runtime errors.
                                 formatter={(value: unknown) => {
-                                    if (typeof value === 'number' && !isNaN(value)) {
-                                      return [`$${value.toFixed(2)}`, 'Ganancias'];
+                                    if (typeof value === 'number') {
+                                        return [`$${value.toFixed(2)}`, 'Ganancias'];
                                     }
-                                    return [`$0.00`, 'Ganancias'];
+                                    // FIX: The original code returned `value` directly, which is of type `unknown`.
+                                    // This is not a valid ReactNode and likely caused a type inference failure.
+                                    // By converting non-number values to a string, we ensure a type-safe return value.
+                                    return [String(value), 'Ganancias'];
                                 }}
+                                labelStyle={{ fontWeight: 'bold' }}
                             />
-                            <Bar dataKey="earnings" name="Ganancias" fill="#6366f1" />
+                            <Bar dataKey="earnings" name="Ganancias" fill="#818cf8" />
                         </BarChart>
                     </ResponsiveContainer>
                 ) : (
-                    <div className="flex items-center justify-center h-full text-center">
-                        <p className="text-gray-500 dark:text-gray-400">No hay datos de ganancias para mostrar con los filtros actuales.</p>
+                    <div className="flex items-center justify-center h-full">
+                        <p className="text-gray-500">No hay datos de ganancias para mostrar.</p>
                     </div>
                 )}
             </div>

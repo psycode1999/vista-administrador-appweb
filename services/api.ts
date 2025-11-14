@@ -40,21 +40,18 @@ let settings: AppSettings = {
 let rawMerchants: Omit<Merchant, 'lat' | 'lng'>[] = [
     { id: 'MERCH-1', name: 'Café del Sol', address: 'Av. Siempre Viva 123', tipPerTransaction: 0.25, lastPaymentDate: '2023-10-10', tipsStatus: TipsStatus.PENDING, daysDue: 15, amountDue: 120.50, accountStatus: AccountStatus.PENDING },
     { id: 'MERCH-2', name: 'Libros y Letras', address: 'Calle Falsa 456', tipPerTransaction: 0.15, lastPaymentDate: '2023-11-01', tipsStatus: TipsStatus.PAID, daysDue: 0, amountDue: 0, accountStatus: AccountStatus.ACTIVE },
-    { id: 'MERCH-3', name: 'Ropa Urbana Co.', address: 'Blvd. de los Sueños 789', tipPerTransaction: 0.20, lastPaymentDate: '2023-09-05', tipsStatus: TipsStatus.PENDING, daysDue: 50, amountDue: 350.75, accountStatus: AccountStatus.PENDING },
-    { id: 'MERCH-4', name: 'TecnoGadgets', address: 'Paseo de la Reforma 101', tipPerTransaction: 0.30, lastPaymentDate: '2023-08-20', tipsStatus: TipsStatus.PENDING, daysDue: 66, amountDue: 890.00, accountStatus: AccountStatus.SUSPENDED },
     { id: 'MERCH-5', name: 'Verde Fresco', address: 'Insurgentes Sur 202', tipPerTransaction: 0.10, lastPaymentDate: '2023-10-25', tipsStatus: TipsStatus.PENDING, daysDue: 5, amountDue: 45.20, accountStatus: AccountStatus.ACTIVE },
     { id: 'MERCH-6', name: 'El Rincón del Gourmet', address: 'Plaza de la Constitución 1', tipPerTransaction: 0.25, lastPaymentDate: '2023-09-15', tipsStatus: TipsStatus.PENDING, daysDue: 40, amountDue: 210.00, accountStatus: AccountStatus.PENDING },
     { id: 'MERCH-7', name: 'La Esquina Creativa', address: 'Calle de la Imaginación 303', tipPerTransaction: 0.18, lastPaymentDate: toDateString(new Date()), tipsStatus: TipsStatus.PAID, daysDue: 0, amountDue: 0, accountStatus: AccountStatus.ACTIVE },
 ];
 
 let products: Product[] = [
-    { id: 'PROD-1', name: 'Café Americano', brand: 'Cafetal', merchantName: 'Café del Sol', category: ProductCategory.COFFEE, price: 3.50, stock: 100, sizeValue: 250, unitOfMeasure: UnitOfMeasure.GRAMS, flavorAroma: 'Tostado medio', createdAt: '2023-01-15T10:00:00Z' },
-    { id: 'PROD-2', name: 'Libro de Ficción', brand: 'Ediciones Imaginarias', merchantName: 'Libros y Letras', category: ProductCategory.BOOKS, price: 15.00, stock: 50, sizeValue: 1, unitOfMeasure: UnitOfMeasure.UNITS, createdAt: '2023-02-20T11:30:00Z' },
-    { id: 'PROD-3', name: 'Camiseta Gráfica', brand: 'Urban Style', merchantName: 'Ropa Urbana Co.', category: ProductCategory.CLOTHING, price: 25.00, stock: 80, sizeValue: 1, unitOfMeasure: UnitOfMeasure.UNITS, flavorAroma: 'Algodón', createdAt: '2023-03-10T09:00:00Z' },
-    { id: 'PROD-4', name: 'Audífonos Inalámbricos', brand: 'SoundWave', merchantName: 'TecnoGadgets', category: ProductCategory.ELECTRONICS, price: 79.99, stock: 30, sizeValue: 1, unitOfMeasure: UnitOfMeasure.UNITS, createdAt: '2023-04-05T14:00:00Z' },
-    { id: 'PROD-5', name: 'Manzanas Orgánicas (kg)', brand: 'Naturaleza Viva', merchantName: 'Verde Fresco', category: ProductCategory.GROCERIES, price: 4.50, stock: 200, sizeValue: 1, unitOfMeasure: UnitOfMeasure.KILOGRAMS, createdAt: '2023-05-01T08:20:00Z' },
-    { id: 'PROD-6', name: 'Queso Brie Francés', brand: 'Le Gourmet', merchantName: 'El Rincón del Gourmet', category: ProductCategory.GOURMET, price: 12.75, stock: 40, sizeValue: 200, unitOfMeasure: UnitOfMeasure.GRAMS, createdAt: '2023-05-18T18:00:00Z' },
-    { id: 'PROD-7', name: 'Latte', brand: 'Cafetal', merchantName: 'Café del Sol', category: ProductCategory.COFFEE, price: 4.00, stock: 100, sizeValue: 350, unitOfMeasure: UnitOfMeasure.MILLILITERS, flavorAroma: 'Vainilla', createdAt: '2023-06-02T10:45:00Z' },
+    { id: 'PROD-1', name: 'Café Americano', brand: 'Cafetal', merchantName: 'Café del Sol', category: ProductCategory.BEVERAGES, price: 3.50, stock: 100, imageUrl: 'https://picsum.photos/seed/PROD-1/400/300', sizeValue: 250, unitOfMeasure: UnitOfMeasure.GRAMS, flavorAroma: 'Tostado medio', createdAt: '2023-01-15T10:00:00Z' },
+    { id: 'PROD-2', name: 'Libro de Ficción', brand: 'Ediciones Imaginarias', merchantName: 'Libros y Letras', category: ProductCategory.STATIONERY, price: 15.00, stock: 50, imageUrl: 'https://picsum.photos/seed/PROD-2/400/300', sizeValue: 1, unitOfMeasure: UnitOfMeasure.UNITS, createdAt: '2023-02-20T11:30:00Z' },
+    { id: 'PROD-5', name: 'Manzanas Orgánicas (kg)', brand: 'Naturaleza Viva', merchantName: 'Verde Fresco', category: ProductCategory.FRESH_FOOD, price: 4.50, stock: 200, imageUrl: 'https://picsum.photos/seed/PROD-5/400/300', sizeValue: 1, unitOfMeasure: UnitOfMeasure.KILOGRAMS, createdAt: '2023-05-01T08:20:00Z' },
+    { id: 'PROD-6', name: 'Queso Brie Francés', brand: 'Le Gourmet', merchantName: 'El Rincón del Gourmet', category: ProductCategory.FRESH_FOOD, price: 12.75, stock: 40, imageUrl: 'https://picsum.photos/seed/PROD-6/400/300', sizeValue: 200, unitOfMeasure: UnitOfMeasure.GRAMS, createdAt: '2023-05-18T18:00:00Z' },
+    { id: 'PROD-7', name: 'Latte', brand: 'Cafetal', merchantName: 'Café del Sol', category: ProductCategory.BEVERAGES, price: 4.00, stock: 100, imageUrl: 'https://picsum.photos/seed/PROD-7/400/300', sizeValue: 350, unitOfMeasure: UnitOfMeasure.MILLILITERS, flavorAroma: 'Vainilla', createdAt: '2023-06-02T10:45:00Z' },
+    { id: 'PROD-8', name: 'Galletas de Mantequilla', brand: 'Repostería Fina', category: ProductCategory.SNACKS, price: 8.50, stock: 120, imageUrl: 'https://picsum.photos/seed/PROD-8/400/300', sizeValue: 150, unitOfMeasure: UnitOfMeasure.GRAMS, createdAt: '2023-07-11T12:00:00Z' },
 ];
 
 
@@ -69,17 +66,6 @@ const orders: Order[] = [
     // --- Merchant 2: Libros y Letras (Paid up) ---
     { id: 'ORD-201', merchantId: 'MERCH-2', customerName: 'Carlos Rodríguez', customerAddress: 'Calle B #2', location: 'Polanco', date: '2023-10-20', status: OrderStatus.DELIVERED, products: [{id: 'PROD-2', name: 'Libro de Ficción', price: 15.00, quantity: 1}], merchantTip: 2.00, platformTip: 12.00, method: 'PayPal' },
     { id: 'ORD-202', merchantId: 'MERCH-2', customerName: 'Elena Pérez', customerAddress: 'Calle E #5', location: 'Polanco', date: '2023-10-28', status: OrderStatus.DELIVERED, products: [{id: 'PROD-2', name: 'Libro de Ficción', price: 15.00, quantity: 1}], merchantTip: 2.00, platformTip: 13.50, method: 'PayPal' },
-    
-    // --- Merchant 3: Ropa Urbana Co. (Multiple payments) ---
-    { id: 'ORD-301', merchantId: 'MERCH-3', customerName: 'Jorge Ramírez', customerAddress: 'Calle F #6', location: 'Roma', date: '2023-08-10', status: OrderStatus.DELIVERED, products: [{id: 'PROD-3', name: 'Camiseta Gráfica', price: 25.00, quantity: 1}], merchantTip: 3.00, platformTip: 40.00, method: 'Tarjeta de Crédito' },
-    { id: 'ORD-302', merchantId: 'MERCH-3', customerName: 'Laura Torres', customerAddress: 'Calle G #7', location: 'Roma', date: '2023-09-01', status: OrderStatus.DELIVERED, products: [{id: 'PROD-3', name: 'Camiseta Gráfica', price: 25.00, quantity: 2}], merchantTip: 5.00, platformTip: 60.50, method: 'Tarjeta de Crédito' },
-    { id: 'ORD-303', merchantId: 'MERCH-3', customerName: 'Pedro Gómez', customerAddress: 'Calle H #8', location: 'Roma', date: '2023-10-15', status: OrderStatus.DELIVERED, products: [{id: 'PROD-3', name: 'Camiseta Gráfica', price: 25.00, quantity: 1}], merchantTip: 3.00, platformTip: 55.25, method: 'Tarjeta de Crédito' },
-
-    // --- Merchant 4: TecnoGadgets (Suspended, no recent payments) ---
-    { id: 'ORD-401', merchantId: 'MERCH-4', customerName: 'Mario Bros', customerAddress: 'Calle D #4', location: 'Santa Fe', date: '2023-07-15', status: OrderStatus.DELIVERED, products: [{id: 'PROD-4', name: 'Audífonos Inalámbricos', price: 79.99, quantity: 1}], merchantTip: 10, platformTip: 150.00, method: 'Tarjeta de Crédito' },
-    { id: 'ORD-402', merchantId: 'MERCH-4', customerName: 'Luigi Bros', customerAddress: 'Calle D #4', location: 'Santa Fe', date: '2023-08-01', status: OrderStatus.DELIVERED, products: [{id: 'PROD-4', name: 'Audífonos Inalámbricos', price: 79.99, quantity: 1}], merchantTip: 10, platformTip: 180.50, method: 'Tarjeta de Crédito' },
-    // A cancelled order that should not be counted
-    { id: 'ORD-403', merchantId: 'MERCH-4', customerName: 'Bowser King', customerAddress: 'Calle D #4', location: 'Santa Fe', date: toDateString(new Date(Date.now() - 2 * 24 * 60 * 60 * 1000)), status: OrderStatus.CANCELLED, products: [{id: 'PROD-4', name: 'Audífonos Inalámbricos', price: 79.99, quantity: 1}], merchantTip: 0, platformTip: 0, method: 'Tarjeta de Crédito' },
 ];
 
 let notifications: Notification[] = [];
@@ -89,10 +75,6 @@ const initialReceipts: Omit<Receipt, 'id'| 'merchantName' | 'status'>[] = [
     { merchantId: 'MERCH-1', pendingBalance: 25.75, amountReceived: 20.00, difference: 5.75, createdBy: 'Usuario Administrador', date: new Date('2023-10-10T11:00:00Z').toISOString() },
     // Corresponds to MERCH-2 payment history (paid in full)
     { merchantId: 'MERCH-2', pendingBalance: 25.50, amountReceived: 25.50, difference: 0, createdBy: 'Usuario Administrador', date: new Date('2023-11-01T10:00:00Z').toISOString() },
-    // Corresponds to MERCH-3 payment history (two payments)
-    { merchantId: 'MERCH-3', pendingBalance: 40.00, amountReceived: 40.00, difference: 0, createdBy: 'Usuario Administrador', date: new Date('2023-08-20T09:00:00Z').toISOString() },
-    { merchantId: 'MERCH-3', pendingBalance: 60.50, amountReceived: 50.00, difference: 10.50, createdBy: 'Usuario Administrador', date: new Date('2023-09-25T15:00:00Z').toISOString() },
-    // No receipts for MERCH-4
 ];
 
 
@@ -673,15 +655,37 @@ export const api = {
         await sleep(500);
         return products;
     },
-    async addProduct(productData: Omit<Product, 'id'>): Promise<Product> {
+    async addProduct(productData: Omit<Product, 'id'> & { merchantNames?: string[] }): Promise<Product> {
         await sleep(400);
-        const newProduct: Product = {
-            id: `PROD-${Date.now()}`,
-            ...productData,
-            createdAt: new Date().toISOString(),
-        };
-        products = [newProduct, ...products];
-        return newProduct;
+
+        const { merchantNames, ...commonData } = productData;
+        const targetMerchants = merchantNames || [];
+
+        if (targetMerchants.length === 0) {
+            // Create a single base product
+            const newProduct: Product = {
+                id: `PROD-${Date.now()}`,
+                ...commonData,
+                merchantName: undefined, // Explicitly base product
+                createdAt: new Date().toISOString(),
+            };
+            products = [newProduct, ...products];
+            return newProduct;
+        } else {
+            // Create a product for each selected merchant
+            const createdProducts: Product[] = [];
+            targetMerchants.forEach((name: string, index: number) => {
+                const newProduct: Product = {
+                    id: `PROD-${Date.now()}-${index}`,
+                    ...commonData,
+                    merchantName: name,
+                    createdAt: new Date().toISOString(),
+                };
+                createdProducts.push(newProduct);
+            });
+            products = [...createdProducts, ...products];
+            return createdProducts[0]; // Return the first one to satisfy original signature
+        }
     },
     async updateProduct(id: string, productData: Partial<Omit<Product, 'id'>>): Promise<Product> {
         await sleep(400);

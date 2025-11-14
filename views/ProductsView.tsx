@@ -8,6 +8,12 @@ type MerchantWithCount = Merchant & { productCount: number };
 type ProductWithSales = Product & { totalSales: number; totalUnits: number; };
 type ProductWithGlobalSales = Product & { totalSales: number; totalUnits: number; };
 
+const PhotoIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+    </svg>
+);
+
 const MerchantsTabContent = () => {
     const [merchants, setMerchants] = useState<MerchantWithCount[]>([]);
     const [products, setProducts] = useState<Product[]>([]);
@@ -26,9 +32,11 @@ const MerchantsTabContent = () => {
                 ]);
 
                 const productCounts = productsData.reduce((acc, product) => {
-                    const merchant = merchantsData.find(m => m.name === product.merchantName);
-                    if (merchant) {
-                        acc[merchant.id] = (acc[merchant.id] || 0) + 1;
+                    if (product.merchantName) {
+                        const merchant = merchantsData.find(m => m.name === product.merchantName);
+                        if (merchant) {
+                            acc[merchant.id] = (acc[merchant.id] || 0) + 1;
+                        }
                     }
                     return acc;
                 }, {} as Record<string, number>);
@@ -162,8 +170,8 @@ const ProductMerchantsPanel: React.FC<{
     const merchantsSelling = useMemo(() => {
         const merchantNames = new Set<string>();
         allProducts
-            .filter(p => p.name === product.name && p.brand === product.brand)
-            .forEach(p => merchantNames.add(p.merchantName));
+            .filter(p => p.name === product.name && p.brand === product.brand && p.merchantName)
+            .forEach(p => merchantNames.add(p.merchantName!));
         return Array.from(merchantNames);
     }, [product, allProducts]);
 
@@ -277,7 +285,7 @@ const BaseTabContent = () => {
                 default:
                     if (!a.createdAt) return 1;
                     if (!b.createdAt) return -1;
-                    return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+                    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
             }
         });
     }, [products, salesData, filters, sortOrder]);
@@ -336,7 +344,7 @@ const BaseTabContent = () => {
         fetchProducts();
     };
     
-    const baseHeaders = ['Producto', 'Marca', 'Comercio', 'Cantidad', 'Unidad', 'Sabor/Aroma', 'Categoría', 'Precio', 'Total Ventas', 'Total Unidades', 'Fecha'];
+    const baseHeaders = ['Imagen', 'Producto', 'Marca', 'Comercio', 'Cantidad', 'Unidad', 'Sabor/Aroma', 'Categoría', 'Precio', 'Total Ventas', 'Total Unidades', 'Fecha'];
 
     return (
          <div>
@@ -396,11 +404,22 @@ const BaseTabContent = () => {
                         processedProducts.map(product => (
                            <tr key={product.id} onClick={() => setPanelProduct(product)} className={`cursor-pointer ${selectedProductIds.includes(product.id) ? 'bg-primary-50 dark:bg-gray-900/50' : ''} hover:bg-gray-50 dark:hover:bg-gray-700/50`}>
                                 <td className="px-6 py-4">
-                                    <input type="checkbox" checked={selectedProductIds.includes(product.id)} onChange={(e) => { e.stopPropagation(); handleSelectOne(product.id); }} className="h-4 w-4 rounded text-primary-600 focus:ring-primary-500 border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700" />
+                                    <input type="checkbox" checked={selectedProductIds.includes(product.id)} onClick={(e) => e.stopPropagation()} onChange={() => handleSelectOne(product.id)} className="h-4 w-4 rounded text-primary-600 focus:ring-primary-500 border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700" />
+                                </td>
+                                <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                                    {product.imageUrl ? (
+                                        <img src={product.imageUrl} alt={product.name} className="h-10 w-10 rounded-md object-cover" />
+                                    ) : (
+                                        <div className="h-10 w-10 rounded-md bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                                            <PhotoIcon className="h-6 w-6 text-gray-400" />
+                                        </div>
+                                    )}
                                 </td>
                                 <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{product.name}</td>
                                 <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{product.brand}</td>
-                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{product.merchantName}</td>
+                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                                    {product.merchantName ? product.merchantName : <span className="italic text-gray-400">Catálogo Base</span>}
+                                </td>
                                 <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{product.sizeValue ?? '-'}</td>
                                 <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{product.unitOfMeasure ?? '-'}</td>
                                 <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{product.flavorAroma ?? '-'}</td>
